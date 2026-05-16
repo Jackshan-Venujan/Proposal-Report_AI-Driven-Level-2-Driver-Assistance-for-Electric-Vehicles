@@ -1141,18 +1141,11 @@ Max latency (ms)              & Worst observed per-frame processing time. \\
 \end{tabular}
 \end{table}
 
-\subsection{Validation and Verification}
 
-\textbf{Validation} is purely simulation-based. Ground truth is obtained from
+Validation is purely simulation-based. Ground truth is obtained from
 CARLA actor geometry. A function gathers the nearest front vehicle's ground truth 
 distance by using obstacle ID and returns the
 bumper-to-bumper longitudinal gap, not from a physical measuring instrument.
-
-\textbf{Verification} of the fusion logic, in particular the obstacle-ID
-propagation of Section~\ref{sec:objid}, is provided by the standalone unit test.
-It mocks \texttt{cv2}, \texttt{carla}, and
-\texttt{sklearn} and exercises nine cases of obstacle-ID propagation through
-\texttt{LidarFusion} (Table~\ref{tab:testcases}).
 
 \begin{table}[H]
 \centering
@@ -1243,63 +1236,27 @@ The camera pipeline shows pronounced jitter (standard deviation $3.57$\,ms,
 maximum $21.86$\,ms). 
 
 % ===========================================================================
-\section{Discussion}
+\chapter{Discussion and Insights}
 \label{sec:discussion}
 % ===========================================================================
-
-\subsection{What is Novel About This Integration}
-
-Compared with a textbook LiDAR integration, several aspects of this project's
-approach are distinctive.
+\section{Summary of Key Results and Observations}
 
 \begin{itemize}
-    \item \textbf{Conservative dual-sensor consensus, not replacement.} A common
-    pattern is to replace a weaker sensor with LiDAR. Here the camera detector
-    is deliberately retained and the fused action is the \emph{worst case} of
-    the two (\texttt{lidar\_fusion.py}). LiDAR \emph{augments} rather than
-    supplants the camera.
-
-    \item \textbf{Two-strategy matching with a safe fallback.} Fusion first
-    tries precise bounding-box projection, then a looser angle gate, then
-    accepts a camera-only estimate. The explicit ``safe-by-default'' policy ---
-    documented in \texttt{docs/SENSOR\_COMPARISON.md} --- keeps the vehicle from
-    going blind when LiDAR fails to match, while still tagging every log row
-    with its true detection source so the bias can be filtered out at analysis
-    time.
-
-    \item \textbf{Asymmetric temporal filtering.} The obstacle detector treats
-    danger escalation and de-escalation asymmetrically: getting closer is
-    believed instantly, getting farther is damped. This safety-biased EMA and
-    the matching action hysteresis are an uncommon, deliberately conservative
-    design.
-
-    \item \textbf{Built-in, honest evaluation.} The integration ships with its
-    own per-frame and per-obstacle metrics logger and an accompanying document
-    that explicitly warns which log is biased and why. The system measures and
-    discloses its own weaknesses rather than only reporting favourable numbers.
-\end{itemize}
-
-\subsection{Summary of Key Results and Observations}
-
-\begin{itemize}
-    \item \textbf{Accuracy.} On the filtered \texttt{BOTH}-tagged rows, LiDAR is
+    \item \textbf{Accuracy :} On the filtered \texttt{BOTH}-tagged rows, LiDAR is
     the more accurate distance source: $3.46$\,m RMSE versus the camera's
     $3.95$\,m (about $12\,\%$ better), and $5.20\,\%$ mean relative error versus
     the camera's $6.14\,\%$.
-    \item \textbf{Latency.} The LiDAR pipeline runs at a $1.72$\,ms median ---
-    roughly $7\times$ faster than the camera's $12.78$\,ms --- and is far more
+    \item \textbf{Latency.} The LiDAR pipeline runs at a $1.72$\,ms median,
+    roughly $7\times$ faster than the camera's $12.78$\,ms and is far more
     predictable (95th-percentile $4.67$\,ms versus $20.25$\,ms).
     \item \textbf{Error consistency.} For both sensors the error standard
     deviation ($3.00$\,m LiDAR, $3.28$\,m camera) exceeds the typical error,
     indicating scattered errors with a long tail of outliers rather than a
     simple correctable bias.
-    \item \textbf{Coverage.} LiDAR detection coverage is limited: in a
-    representative per-obstacle log only $5.7\,\%$ of rows were confirmed by both
-    sensors, because LiDAR returns are often too sparse at range to clear the
-    fusion gates.
+
 \end{itemize}
 
-\subsection{Insights and Engineering Decisions}
+\section{Insights and Engineering Decisions}
 
 Table~\ref{tab:insights} consolidates the findings of the testing chapter into
 the engineering decisions they motivate for a production-oriented perception
@@ -1314,22 +1271,21 @@ stack.
 \toprule
 \textbf{Category} & \textbf{Finding} & \textbf{Implication / decision} \\
 \midrule
-Accuracy (RMSE) & LiDAR $3.46$\,m vs.\ camera $3.95$\,m --- LiDAR $\sim$12\,\% more accurate. & Use LiDAR as the primary distance sensor. \\
-Mean relative error & Camera $6.14\,\%$ vs.\ LiDAR $5.20\,\%$ --- both within an acceptable range for mid-distance detection. & Camera is viable as a redundant / backup sensor. \\
-Error consistency (std.\ dev.) & Camera $3.28$\,m, LiDAR $3.00$\,m --- the spread exceeds the mean error, indicating scattered errors with long-tail outliers. & Do not trust single-frame readings; apply Kalman or moving-average smoothing before control decisions. \\
+Accuracy (RMSE) & LiDAR $3.46$\,m vs.\ camera $3.95$\,m. LiDAR $\sim$12\,\% more accurate. & Use LiDAR as the primary distance sensor. \\
+Mean relative error & Camera $6.14\,\%$ vs.\ LiDAR $5.20\,\%$ Both within an acceptable range for mid-distance detection. & Camera must for semantic understanding. \\
+Error consistency (std.\ dev.) & Camera $3.28$\,m, LiDAR $3.00$\,m, the spread exceeds the mean error, indicating scattered errors with long-tail outliers. & Do not trust single-frame readings; apply Kalman or moving-average smoothing before control decisions. \\
 Sensor fusion & Similar error spreads but different failure modes --- the camera struggles with depth, LiDAR with low-reflectivity returns. & Fuse both sensors with inverse-variance weighting ($\approx$52\,\% LiDAR / 48\,\% camera). \\
-Latency --- median & LiDAR $1.72$\,ms vs.\ camera $12.78$\,ms --- LiDAR is $\sim$7$\times$ faster. & LiDAR is suited to the real-time / emergency-braking loop. \\
-Latency --- 95th pct. & Camera spikes to $20.25$\,ms; LiDAR stays under $4.67$\,ms. & The camera pipeline has jitter --- investigate frame-processing bottlenecks or budget for the worst case. \\
-Latency --- max & Camera peaks at $21.86$\,ms vs.\ LiDAR $7.20$\,ms. & Run the camera and LiDAR on separate threads so camera spikes cannot block the LiDAR loop. \\
+Latency   median & LiDAR $1.72$\,ms vs.\ camera $12.78$\,ms. LiDAR is $\sim$7$\times$ faster. & LiDAR is suited to the real-time / emergency-braking loop. \\
+Latency   95th pct. & Camera spikes to $20.25$\,ms; LiDAR stays under $4.67$\,ms. & The camera pipeline has jitter, investigate frame-processing bottlenecks or budget for the worst case. \\
+Latency   max & Camera peaks at $21.86$\,ms vs.\ LiDAR $7.20$\,ms. & Run the camera and LiDAR on separate threads so camera spikes cannot block the LiDAR loop. \\
 Safety margin & $2\sigma \approx 6$--$7$\,m of uncertainty at the $95\,\%$ confidence level for both sensors. & Build braking-distance buffers with $\sim$6\,m margin; never plan trajectories at the edge of detection range. \\
 Overall & LiDAR-primary, camera-secondary, with temporal smoothing and sensor fusion. & Production stack: LiDAR for the fast loop, a fused estimate for path planning, the camera for classification and redundancy. \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Were the Objectives Achieved?}
 
-Cross-referencing the three objectives from Section~\ref{sec:methodology}:
+\subsection{Objectives Achieved?}
 
 \begin{enumerate}
     \item \textbf{Add a geometric distance source --- achieved.} LiDAR supplies
@@ -1358,6 +1314,66 @@ sees danger. The fast ($\sim$1\,ms) LiDAR clustering path is well suited to a
 resource-constrained automotive ECU, and the asymmetric temporal filtering
 directly addresses the real nuisance-braking problem (a single noisy far reading
 must not cancel a brake request).
+
+\subsection{Limitations and Drawbacks}
+\label{sec:limitations}
+
+The following limitations are evident from the code and the logged results.
+
+\begin{itemize}
+    \item \textbf{Single-plane reasoning.} Although the sensor is 3D
+    (32 channels), \texttt{LidarObstacleDetector} clusters only the $(x,y)$
+    projection and reasons about a 2D horizontal plane. Height information is
+    collected (the $z$ extents) but not used for classification.
+
+    \item \textbf{Configured range and density are modest.} The 50\,m range and
+    56\,000\,pts/s rate (Table~\ref{tab:lidarcfg}) are far below production
+    LiDAR. Distant objects return few points, which directly causes the low
+    LiDAR detection rate ($0.10$--$0.27$).
+
+    \item \textbf{Sparse-return failure of bbox projection.} Bounding-box
+    fusion needs enough projected points inside the box; for distant, narrow, or
+    occluded objects it falls through to the angle gate or to camera-only. This
+    is the documented cause of the camera ``safe-by-default'' fallback.
+
+    \item \textbf{Ground-truth association is fragile.}
+    \texttt{\_per\_obstacle\_gt()} matches detections to CARLA actors by angle
+    and distance with fixed gates; when it picks the wrong actor it stamps a
+    distant vehicle's range onto a near obstacle, producing long-tail error
+    outliers in the raw per-obstacle log that must be filtered out before the
+    accuracy metrics can be computed.
+
+    \item \textbf{Small clean-comparison sample.} Only 51 of 902 per-obstacle
+    rows were \texttt{BOTH}-confirmed, so the favourable LiDAR accuracy result
+    rests on a thin slice of the data.
+
+    \item \textbf{No clustering when \texttt{sklearn} is missing.} If
+    \texttt{scikit-learn} is unavailable, \texttt{LidarObstacleDetector}
+    disables clustering entirely and the LiDAR contributes nothing --- a hard
+    dependency in practice despite the guarded import.
+
+    \item \textbf{Single most-recent frame only.} \texttt{LidarSensor} keeps
+    only the latest sweep; if the control loop stalls, an old cloud is silently
+    reused with no staleness check beyond the stored timestamp.
+
+    \item \textbf{Environmental conditions are simulated.} All weather effects
+    are CARLA presets. Real LiDAR degradation in rain, fog, dust, or from
+    retro-reflective surfaces is not represented, so the accuracy figures are
+    optimistic relative to real hardware.
+\end{itemize}
+
+\subsection{Concluding Remark}
+
+LiDAR was integrated as a fast, geometrically grounded second opinion layered
+onto an existing camera perception stack. Its introduction was localized to a
+set of new \texttt{core/} modules but rippled outward: the driving agent's
+control input became a fused two-sensor verdict, new ground-truth and metrics
+machinery was added, and the visualization gained LiDAR-specific overlays. The
+measured outcome is a pipeline that is fast and, when both sensors agree,
+distance-accurate --- but whose coverage is currently limited by a modest sensor
+configuration and a fragile ground-truth association step.
+
+
 
 
 \chapter{Timeline and Resource Required}
