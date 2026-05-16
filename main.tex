@@ -5,6 +5,7 @@
 \usepackage{tocloft} % For customizing table of contents
 \usepackage{amsmath} % For math environments (e.g., \text) and equations
 \usepackage{booktabs} % Better table rules: \toprule, \midrule, \bottomrule
+\usepackage{longtable} % For tables that span multiple pages
 % Syntax-highlighted code listings (fixes undefined lstlisting errors)
 \usepackage{xcolor}
 \usepackage{listings}
@@ -216,6 +217,86 @@
   long  = Vehicle-to-Vehicle
 }
 
+\DeclareAcronym{YOLO}{
+  short = YOLO,
+  long  = You Only Look Once
+}
+
+\DeclareAcronym{YOLOv11Nano}{
+  short = YOLOv11-Nano,
+  long  = You Only Look Once Version 11
+}
+
+\DeclareAcronym{Nano}{
+  short = Nano,
+  long  = Nano
+}
+
+\DeclareAcronym{BDD100K}{
+  short = BDD100K,
+  long  = Berkeley DeepDrive 100K Dataset
+}
+
+\DeclareAcronym{MobileNetV3}{
+  short = MobileNetV3,
+  long  = Mobile Network Version 3
+}
+
+\DeclareAcronym{GTSRB}{
+  short = GTSRB,
+  long  = German Traffic Sign Recognition Benchmark
+}
+
+\DeclareAcronym{UFLD}{
+  short = UFLD,
+  long  = Ultra-Fast Lane Detection
+}
+
+\DeclareAcronym{MB}{
+  short = MB,
+  long  = Megabyte
+}
+
+\DeclareAcronym{GPU}{
+  short = GPU,
+  long  = Graphics Processing Unit
+}
+
+\DeclareAcronym{NVIDIA}{
+  short = NVIDIA,
+  long  = NVIDIA Corporation (originally from “NV” for Next Version + “IDIA” inspired naming; commonly treated as a company name rather than an acronym)
+}
+
+\DeclareAcronym{ONNX}{
+  short = ONNX,
+  long  = Open Neural Network Exchange
+}
+
+\DeclareAcronym{TensorRT}{
+  short = TensorRT,
+  long  = Tensor Runtime
+}
+
+\DeclareAcronym{FP16}{
+  short = FP16,
+  long  = 16-bit Floating Point Precision
+}
+
+\DeclareAcronym{CUDA}{
+  short = CUDA,
+  long  = Compute Unified Device Architecture
+}
+
+\DeclareAcronym{CPU}{
+  short = CPU,
+  long  = Central Processing Unit
+}
+
+\DeclareAcronym{ResNet18}{
+  short = ResNet-18,
+  long  = Residual Network with 18 layers
+}
+
 \begin{document}
 
 \include{cover}
@@ -246,7 +327,7 @@ This project proposes the development of a Level 2 Advanced Driver Assistance Sy
 \chapter*{Acronyms}
 \addcontentsline{toc}{chapter}{Acronyms}
 
-\begin{tabular}{@{}ll@{}}
+\begin{longtable}{@{}ll@{}}
     \textbf{ACC} & Adaptive Cruise Control \\
     \textbf{ADAS} & Advanced Driver Assistance Systems \\
     \textbf{AI} & Artificial Intelligence \\
@@ -279,7 +360,23 @@ This project proposes the development of a Level 2 Advanced Driver Assistance Sy
     \textbf{TTC} & Time to Collision \\
     \textbf{V2I} & Vehicle-to-Infrastructure \\
     \textbf{V2V} & Vehicle-to-Vehicle \\
-\end{tabular}
+    \textbf{YOLO} & You Only Look Once \\
+    \textbf{YOLOv11-Nano} & You Only Look Once Version 11 \\
+    \textbf{Nano} & Nano \\
+    \textbf{BDD100K} & Berkeley DeepDrive 100K Dataset \\
+    \textbf{MobileNetV3} & Mobile Network Version 3 \\
+    \textbf{GTSRB} & German Traffic Sign Recognition Benchmark \\
+    \textbf{UFLD} & Ultra-Fast Lane Detection \\
+    \textbf{MB} & Megabyte \\
+    \textbf{GPU} & Graphics Processing Unit \\
+    \textbf{NVIDIA} & NVIDIA Corporation (originally from “NV” for Next Version + “IDIA” inspired naming; commonly treated as a company name rather than an acronym) \\
+    \textbf{ONNX} & Open Neural Network Exchange \\
+    \textbf{TensorRT} & Tensor Runtime \\
+    \textbf{FP16} & 16-bit Floating Point Precision \\
+    \textbf{CUDA} & Compute Unified Device Architecture \\
+    \textbf{CPU} & Central Processing Unit \\
+    \textbf{ResNet-18} & Residual Network with 18 layers \\
+\end{longtable}
 \newpage
 
 \renewcommand{\thepage}{\arabic{page}} % Start page numbering in arabic 
@@ -674,14 +771,6 @@ A central data management component maintains system state, logs sensor data and
 
 Virtual sensors in \ac{CARLA} are configured to match the specifications of physical sensors used in hardware deployment. Camera parameters, including resolution, field of view, exposure, and mounting position, are matched to the Arducam specifications. \ac{LiDAR} configuration, including scan rate, vertical and horizontal resolution, range, and point density, is configured to represent the physical \ac{LiDAR} sensor.
 
-\paragraph{Adaptive Cruise Control}
-
-Adaptive Cruise Control is implemented by configuring longitudinal control logic in CARLA to replicate real-vehicle behavior, where radar-/\ac{LiDAR}-based lead vehicle detection, time headway thresholds, and acceleration–deceleration limits are matched to the constraints of the physical electric vehicle platform. Vehicle dynamics parameters, including maximum braking force, throttle response, and control update rate, are tuned to reflect the real drivetrain and actuator characteristics to ensure consistent speed regulation during simulation-to-hardware transfer.
-
-\paragraph{Trajectory Planning and RL-Based Decision Making}
-
-Trajectory planning and RL-based decision-making modules are trained in the \ac{CARLA} environment using vehicle kinematic constraints, lane geometry, and traffic interaction rules that closely approximate real-world operating conditions. The state space, action space, and reward function are designed to align with physical vehicle limits, ensuring that learned policies generate safe, feasible steering and speed commands when deployed on the real electric vehicle under supervised Level 2 autonomy.
-
 \section{\ac{LiDAR}-Perception Module Development and\\Experimentation}
 
 This section explains \ac{LiDAR} as a measurement technology and how it is connected to CARLA 
@@ -927,7 +1016,7 @@ Front-sector LiDAR clusters that match no camera detection are still emitted as
 synthetic \texttt{LIDAR\_ONLY} obstacles, so a LiDAR-only objects also will be logged as well. 
 This allows for a comprehensive comparison of the two sensors' detection capabilities.
 
-\subsection{Lane Keeping Assistance Development}
+\section{Lane Keeping Assistance Development}
 
 The Lane Keeping Assistance system maintains vehicle position within the detected ego-lane through continuous steering adjustments \cite{ref33}. A cascaded control architecture is employed with separate controllers for lateral error and heading error.
 
@@ -951,85 +1040,66 @@ Controller gains are adapted based on vehicle speed, as steering response charac
 
 Steering commands are limited to maximum rates and magnitudes compatible with vehicle kinematics and passenger comfort. If lane detection confidence drops below a threshold, the controller reduces gain or disengages entirely, alerting the driver to resume manual control.
 
-\subsection{Trajectory Planning and Decision-Making Development}
-\subsubsection{Planning and Decision-Making}
+\section{Multi-Stage Perception Model Training and Jetson Optimization}
 
-This module is charged with the responsibility of translating perception output on how safe and smooth vehicle motion should look like under Level 2 supervision. The proposed method adopts a hierarchical architecture that distinguishes between the decision-making and trajectory planning phases and is integrated in such a way that it is safe and real-time feasible.
+In order to address the perception requirements of the driving system, three deep learning models were trained and used as a merged multi-stage pipeline. The first model is a \ac{YOLOv11Nano} object detector trained on the \ac{BDD100K} dataset to detect obstacles including cyclists, cars, trucks, buses, motorcycles, traffic signs and traffic lights. The second model is a lightweight \ac{MobileNetV3}-Small classifier trained on the \ac{GTSRB} dataset (43 classes) to accurately classify detected sign crops. The third model is an \ac{UFLD} network with a \ac{ResNet18} backbone trained on the TuSimple benchmark for real-time lane boundary detection. The UFLD weights were reduced from approximately 240 \ac{MB} to about 100 \ac{MB} by removing auxiliary head parameters and \ac{CARLA} simulation–specific layers not needed for real-world scenarios; this was performed using state-dictionary filtering to retain only the fundamental lane parsing network weights.
 
-\paragraph{Decision-Making Module}
+These models were merged into a single MultiStagePerception \ac{ROS}-compatible node. The \ac{YOLOv11Nano} detector first localises objects and traffic-sign regions in the input frame, the \ac{MobileNetV3} classifier performs recognition on cropped sign regions using batched \ac{GPU} inference, and \ac{UFLD} simultaneously processes a resized input to predict lane boundaries.
 
-This module analyzes and makes decisions regarding the current driving scenario to decide upon appropriate longitudinal driving maneuvers. It runs at a higher level of abstraction.
+To optimise this pipeline for real-time deployment on the \ac{NVIDIA} Jetson Orin Nano, several techniques were employed. PyTorch models were exported to \ac{ONNX} and compiled into \ac{TensorRT} engines with \ac{FP16} half-precision quantisation using the `trtexec` tool, reducing memory footprint and inference latency. \ac{CUDA} stream parallelism was implemented to run the \ac{YOLOv11Nano} detector and the lane detection network on separate \ac{GPU} streams. Persistent \ac{GPU} tensor buffers were used to eliminate unnecessary memory allocations between frames. All image preprocessing, including colour-space conversion, resizing and normalisation, was performed on the \ac{GPU} to avoid costly \ac{CPU}-\ac{GPU} transfers. These optimisations allowed the merged perception node to achieve real-time frame rates suitable for embedded autonomous driving on the Jetson Orin Nano platform.
 
-Key responsibilities include:
+\section{Decision Model Selection for Autonomous Driving Architecture}
 
-\begin{itemize}
-    \item Identifying the current traffic context, such as free-flow driving, dense traffic, lead-vehicle following, or approaching traffic signals.
-    \item Selecting the appropriate driving mode, including cruising, adaptive following, smooth deceleration, or full stop.
-    \item Assessing risk levels associated with detected objects using perception outputs, including object class, distance, and relative velocity.
-    \item Adapting safety margins such as time-gap and braking aggressiveness based on traffic density and perceived risk.
-    \item Incorporating short-horizon motion prediction of surrounding vehicles to anticipate potential conflicts.
-\end{itemize}
+\subsection{Objective and Scope}
 
-Decision-making is implemented using a hybrid approach:
+The primary goal of this evaluation is to determine which decision-making model the Hierarchical Finite State Machine (NewHFSM) or the Behavior Tree (NewBT) should be carried forward into the trajectory planning phase of the autonomous vehicle project. The selected model must demonstrate the best combination of behavioral correctness, computational efficiency, and long-term engineering maintainability.
 
-\begin{itemize}
-    \item Rule-based logic enforces traffic rules, safety constraints, and system operational limits.
-    \item A reinforcement learning (RL) component is used for adaptive parameter tuning, particularly for time-gap adjustment and object risk scoring, without performing direct control actions.
-\end{itemize}
+\subsection{Background and Motivation}
 
-The states of the agent are a compact state space including the speed of the ego vehicle, relative distance and velocity of lead vehicles, traffic density indicators, and signal states. The objectives of the reward function are to maximize safety, smoothness, and efficacy, while discouraging aggressive acceleration, unsafe gap acceptance, and unnecessary stops.
+\subsubsection{Why Not Reinforcement Learning?}
 
-\subsection{Trajectory Planning Module}
-
-The trajectory planning module generates a feasible and smooth longitudinal trajectory based on the selected driving mode and safety parameters provided by the decision-making layer.
-
-Key responsibilities include:
+During the project proposal phase, Reinforcement Learning (RL) was listed as a candidate approach for the decision-making layer. After careful consideration, RL was set aside for the following reasons:
 
 \begin{itemize}
-    \item Generating target speed profiles along the ego-lane that maintain safe following distances and comply with traffic signals.
-    \item Ensuring smooth transitions between acceleration, cruising, and deceleration to enhance passenger comfort.
-    \item Respecting vehicle dynamic limits, including acceleration, jerk, and braking constraints.
-    \item Adjusting trajectory optimization cost weights based on risk levels supplied by the decision-making module, where higher perceived risk increases penalties on speed, acceleration, and proximity to obstacles, resulting in more cautious and conservative motion profiles.
+    \item \textbf{Computational requirements:} Training a competent RL agent demands substantial GPU resources and large-scale simulation infrastructure not available within this project's constraints.
+    \item \textbf{Data and time cost:} Effective RL policies require millions of simulation steps across diverse scenarios, making development timelines impractical.
+    \item \textbf{Generalization gap:} Even well-trained RL agents frequently fail to generalize from simulation to real-world conditions, a known and well-documented challenge in the literature.
 \end{itemize}
 
-Trajectory planning is formulated as a local planning problem and implemented using:
+These limitations led the investigation toward rule-based, interpretable architectures that could be implemented, tested, and reasoned about within the project scope. A review of the current autonomous-driving research landscape identified two mature, widely-adopted candidates: Behavior Trees (BT) and Hierarchical Finite State Machines (HFSM).
+
+\subsubsection{Why Compare Before Choosing?}
+
+Instead of just picking an architecture and running with it, an honest, side-by-side comparison was conducted. Both models were built from scratch against identical interfaces --- they take in the same perception data (\texttt{PerceptionState}) and produce the same output (\texttt{NewDecisionOutput} via \texttt{NewController}) --- so the only thing actually being tested is the decision-making layer itself, with no noise from differences in sensing or actuation.
+
+\paragraph{Fair Comparison Guarantee:}
+
+NewHFSM and NewBT both read from the same \texttt{PerceptionState} and write to the same \texttt{NewDecisionOutput}. The controller and sensor pipeline are shared. So any difference observed in behavior, speed, or code quality comes down to one thing: the decision architecture. The comparison examines three dimensions, chosen to reflect both what the project needs right now and what it will need to live with long-term:
 
 \begin{itemize}
-    \item Lane-centerline-based planning for Level 2 operation.
-    \item Polynomial or spline-based trajectory generation to ensure continuity in velocity and acceleration.
-    \item Model Predictive Control (MPC) for longitudinal trajectory optimization over a receding horizon, enabling real-time adjustment to dynamic traffic conditions.
+    \item Behavior quality --- did the model actually make the right call in each scenario?
+    \item System efficiency --- how fast is the decision step, and how hard is it on the CPU?
+    \item Engineering quality --- how complex is the code, and how easy will it be to maintain or extend down the road?
 \end{itemize}
 
-\paragraph{Integration with Adaptive Cruise Control}
+\subsection{Evaluation Methodology}
 
-The result from the trajectory planning module is the target speed and acceleration to the Adaptive Cruise Control (ACC) module. This is followed by the execution of the targets from the ACC module while ensuring a safe distance from the preceding vehicles as well as traffic signals.
+Because these are deterministic rule-based architectures rather than learned models, conventional machine-learning metrics such as accuracy percentages do not apply directly. The evaluation methodology follows established practice from the autonomous systems and robotics literature, which assesses decision models across three complementary axes.
 
-Hierarchical decentralization of decision-making tasks and trajectory planning reduces modularity issues, interpretability, and validation of security by incorporating elements of learnability that do not deteriorate deterministic control scenarios.
-\subsection{Adaptive Cruise Control Development}
+\subsubsection{Behavioral Correctness (Task Success)}
 
-The Adaptive Cruise Control (ACC) system regulates vehicle speed to maintain safe following distances from lead vehicles while tracking a driver-specified target speed when no lead vehicle is present \cite{ref1,ref32}.
+In this context, ``accuracy'' does not mean a classification score --- it means whether the autonomous vehicle actually does the right thing safely in a live, changing environment. That is evaluated through simulation testing across a set of controlled scenarios: static obstacles, traffic lights, and mixed real-world conditions.
 
-\paragraph{Lead Vehicle Tracking}
+\begin{itemize}
+    \item Simulation testing checks whether the system triggers emergency braking when needed, stops at red lights, slows down for obstacles, and recovers from lane loss, all within acceptable response windows.
+    \item The research literature is fairly consistent on this: when both architectures are implemented properly, they produce the same driving behavior. The real difference between BT and HFSM is not in how well the car drives, it is in how the software is structured.
+    \item That equivalence is actually what makes the comparison interesting. Since neither architecture has a meaningful edge in driving accuracy, the tiebreaker has to come from somewhere else --- namely, efficiency and engineering quality, which are what determine whether the project stays healthy over time.
+\end{itemize}
 
-Object detection and LiDAR data are fused to identify vehicles in the ego-lane ahead of the autonomous vehicle. A Kalman filter tracks lead vehicle position and velocity, providing filtered estimates that reduce sensor noise.
-
-\paragraph{Following Distance Policy}
-
-Safe following distance is computed using a time-gap policy where the target gap is proportional to current vehicle speed (typically 2--3 seconds). This approach naturally increases following distance at higher speeds while maintaining closer gaps at low speeds.
-
-\paragraph{Longitudinal Control}
-
-A Model Predictive Control (MPC) approach is employed for longitudinal control \cite{ref32}, optimizing the predicted vehicle trajectory over a receding horizon (typically 2--3 seconds). The optimization objective balances tracking target speed, maintaining a safe gap to the lead vehicle, passenger comfort (limiting acceleration and jerk), and fuel efficiency.
-
-\paragraph{Deceleration for Traffic Signals}
-
-When a red traffic signal is detected, the ACC system computes the required deceleration to stop at the signal stop line. Deceleration is applied smoothly beginning at a distance that allows comfortable braking rates (typically 2--3 m/s$^2$).
-
-\paragraph{Speed Limits and Curvature}
-
-The ACC system respects speed limits detected from traffic sign recognition and reduces speed for sharp curves based on estimated curve radius and assumed lateral acceleration limits \cite{ref40}.
 
 \chapter{ Testing and Performance Evaluation}
+
+\section{Experimental Setup Perception Module Development (LiDAR Integration)}
 
 This chapter evaluates the LiDAR integration by comparing the LiDAR-measured
 obstacle distance and the camera-measured obstacle distance, frame by frame,
@@ -1039,7 +1109,6 @@ analyzed offline. The sections below describe the experimental setup, how the
 two sensors are made to measure \emph{the same} obstacle, the KPIs used, and the
 analyzed results.
 
-\section{Experimental Setup}
 
 \begin{itemize}
     \item \textbf{Simulator and map} - CARLA, town \texttt{Town04}.
@@ -1172,9 +1241,9 @@ Each in-simulation run is stored as a dated session in the \texttt{metrics/}
 directory. The results below are computed from the filtered \texttt{BOTH}-tagged
 rows of such a session, following the noise-filtering procedure described above.
 
-\section{Results and Analysis}
+\subsection{Results and Analysis}
 
-\subsection{Distance Accuracy}
+\subsubsection{Distance Accuracy}
 
 Table~\ref{tab:distacc} reports the three distance-accuracy metrics for the
 camera and the LiDAR, each measured against the CARLA ground truth on the
@@ -1235,11 +1304,220 @@ with a 95th-percentile latency of $4.67$\,ms versus the camera's $20.25$\,ms.
 The camera pipeline shows pronounced jitter (standard deviation $3.57$\,ms,
 maximum $21.86$\,ms). 
 
+\section{Experimental Setup Decision Model Selection for Autonomous Driving Architecture}
+
+\subsection{Evaluation Methodology}
+
+Because these are deterministic rule-based architectures rather than learned models, conventional machine-learning metrics such as accuracy percentages do not apply directly. The evaluation methodology follows established practice from the autonomous systems and robotics literature, which assesses decision models across three complementary axes.
+
+\subsubsection{Behavioral Correctness (Task Success)}
+
+In this context, ``accuracy'' does not mean a classification score --- it means whether the autonomous vehicle actually does the right thing safely in a live, changing environment. That is evaluated through simulation testing across a set of controlled scenarios: static obstacles, traffic lights, and mixed real-world conditions.
+
+\begin{itemize}
+    \item Simulation testing checks whether the system triggers emergency braking when needed, stops at red lights, slows down for obstacles, and recovers from lane loss, all within acceptable response windows.
+    \item The research literature is fairly consistent on this: when both architectures are implemented properly, they produce the same driving behavior. The real difference between BT and HFSM is not in how well the car drives, it is in how the software is structured.
+    \item That equivalence is actually what makes the comparison interesting. Since neither architecture has a meaningful edge in driving accuracy, the tiebreaker has to come from somewhere else --- namely, efficiency and engineering quality, which are what determine whether the project stays healthy over time.
+\end{itemize}
+
+\subsubsection{System Efficiency (Latency and CPU)}
+
+To measure efficiency, each model's \texttt{decide()} function was timed on every frame across three separate simulation runs. Two metrics were tracked: mean decision latency, and 95th-percentile CPU time the latter being useful for catching worst-case spikes that could cause problems in a real-time control loop.
+
+\begin{table}[H]
+\centering
+\caption{Decision latency comparison across three simulation runs}
+\label{tab:decide_latency}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}ccccccc@{}}
+\toprule
+\textbf{Run} & \multicolumn{3}{c}{\textbf{NewBT}} & \multicolumn{3}{c}{\textbf{NewHFSM}} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+& Latency & CPU$_{\text{avg}}$ & CPU$_{\text{p95}}$ & Latency & CPU$_{\text{avg}}$ & CPU$_{\text{p95}}$ \\
+& (ms) & (ms) & (ms) & (ms) & (ms) & (ms) \\
+\midrule
+1 & 0.198 & 0.197 & 0.336 & 0.018 & 0.017 & 0.025 \\
+2 & 0.197 & 0.196 & 0.335 & 0.016 & 0.015 & 0.021 \\
+3 & 0.197 & 0.196 & 0.334 & 0.015 & 0.014 & 0.019 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The results are unambiguous. HFSM is roughly $11\times$ faster than BT across every run, averaging $0.016$\,ms per decision versus $0.197$\,ms for BT. Even at the 95th percentile, HFSM peaks at just $0.025$\,ms compared to BT's $0.336$\,ms.
+
+The BT overhead traces back to the \texttt{py\_trees} framework itself: blackboard writes, node ticking, and tree traversal all add a small but consistent cost on every frame. HFSM, by contrast, just runs a straight if/elif chain with no framework in the way. That said, both models sit comfortably within the real-time budget for a $100\,\text{Hz}$ control loop, which allows $10$\,ms per frame so neither one is actually a latency risk in practice. The reason HFSM's lower overhead still matters is headroom: with Phase II trajectory planning on the horizon, keeping CPU usage lean now leaves more room to work with later.
+
+\subsubsection{Engineering Quality}
+
+The engineering quality of both decision-making architectures was evaluated using a combination of automated software metrics and manual architectural analysis. Three complementary metrics were applied directly to the source code using the Radon analysis toolset: Cyclomatic Complexity, Maintainability Index, and Source Lines of Code (SLOC). In addition, an extensibility study was performed to evaluate the engineering cost of introducing new behaviors during future system expansion.
+
+\paragraph{Cyclomatic Complexity (radon cc):}
+
+Cyclomatic Complexity (CC) measures the number of independent execution paths through a function. Lower values generally indicate code that is easier to understand, test, and maintain. Although both models achieved an overall Grade A average, the internal distribution of complexity differs significantly.
+
+In the NewHFSM architecture, the method \texttt{\_evaluate\_transitions()} reached a cyclomatic complexity value of $17$, corresponding to a Grade C hotspot. This method centralizes all seven transition guards into a single decision block. While functionally correct, this creates a structural bottleneck because any future modification to one behavior may unintentionally affect the priority ordering of all others.
+
+In contrast, the NewBT architecture distributes the same decision logic across several smaller \texttt{\_check()} methods. None of these methods exceeded a CC value of $6$. By isolating conditions into independent nodes, the Behavior Tree reduces coupling between behaviors and lowers the risk of regression when extending the system.
+
+\paragraph{Maintainability Index (radon mi):}
+
+The Maintainability Index (MI) combines Halstead Volume, Cyclomatic Complexity, and total line count into a single score ranging from $0$ to $100$, where higher values indicate better maintainability.
+
+The HFSM implementation achieved MI scores between $60.88$ and $71.86$ across its two source files, indicating relatively strong maintainability. The BT implementation achieved a lower score of $50.96$. This reduction is mainly due to the fact that all node classes, conditions, actions, and tree construction logic are contained within a single $372$-line file.
+
+Although the lower MI score does not indicate poor functionality, it highlights a structural issue that should be addressed before further expansion during Phase II development.
+
+\paragraph{Lines of Code and SLOC:}
+
+The total Lines of Code (LOC) were measured as $503$ for HFSM and $375$ for BT. However, after removing comments and blank lines, the effective Source Lines of Code (SLOC) were $237$ and $220$ respectively, resulting in a relatively small difference of only $17$ lines.
+
+The larger raw LOC value in HFSM is primarily due to its heavier documentation coverage. Approximately $33\,\%$ of HFSM code consists of comments, compared to $16\,\%$ in BT. When normalized per implemented behavior, the two systems are nearly identical:
+
+\begin{itemize}
+    \item HFSM: $33.9$ SLOC per behavior
+    \item BT: $31.4$ SLOC per behavior
+\end{itemize}
+
+This indicates that both architectures require a comparable amount of implementation logic for each behavior.
+
+\paragraph{Cost of Adding a New Behavior:}
+
+To evaluate extensibility, a practical engineering trace was performed using three representative future behaviors. The analysis used the Effort metric proposed in behavior tree literature by Colledanchise and Ögren (2018):
+
+\begin{equation}
+E = (F \times 5) + (L \times 1) + (T \times 3) + (I \times 5)
+\end{equation}
+
+where:
+
+\begin{itemize}
+    \item $F$ = number of files modified
+    \item $L$ = number of lines added or changed
+    \item $T$ = number of new transitions introduced
+    \item $I$ = interrupt-related edits required
+\end{itemize}
+
+The weighting values were used only for relative comparison and are not intended to represent absolute engineering cost.
+
+\begin{table}[H]
+\centering
+\caption{Extensibility results: effort to add representative new behaviors}
+\label{tab:extensibility}
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+\textbf{Test Behavior} & \textbf{NewHFSM Effort} & \textbf{NewBT Effort} & \textbf{Winner} \\
+\midrule
+Yield at Intersection & $\approx 40$ & $\approx 34$ & BT \\
+Pedestrian Emergency Stop & $\approx 60$ & $\approx 16$ & BT (large gap) \\
+Recover after Lane-Lost & $\approx 35$ & $\approx 19$ & BT \\
+\midrule
+Total Effort (sum) & $E \approx 135$ & $E \approx 69$ & BT ($\sim$2$\times$ lower) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The results reveal a major architectural difference between the two models. For additive behaviors, such as ``Yield at Intersection,'' both systems require similar effort. However, the difference becomes substantial for interruptive behaviors that must override currently active states.
+
+In HFSM, interruptive behaviors require modifications to the \texttt{dispatch()} logic of multiple state classes. In BT, the same behavior can usually be added by inserting a single high-priority branch at the root Selector node. Since priority handling is structurally embedded within the tree itself, no modification to existing nodes is required.
+
+\begin{table}[H]
+\centering
+\caption{Full engineering comparison across all evaluation metrics}
+\label{tab:full_comparison}
+\small
+\setlength{\tabcolsep}{2.8pt}
+\begin{tabular}{@{}p{3.8cm}ccc@{}}
+\toprule
+\textbf{Metric} & \textbf{NewHFSM} & \textbf{NewBT} & \textbf{Winner} \\
+\midrule
+Avg Cyclomatic Complexity & 2.18 (Grade A) & 1.87 (Grade A) & BT \\
+Worst-case CC (single fn) & 17 & 6 & BT \\
+Maintainability Index & $60.88$--$71.86$ & $50.96$ & HFSM \\
+Total LOC / SLOC & $503 / 237$ & $375 / 220$ & Comparable \\
+SLOC per behavior & 33.9 & 31.4 & Comparable \\
+Files to add 1 behavior & 3 files & 2 files & BT \\
+Edits to existing code & Centralized edits required & Minimal root insertion & BT \\
+Risk of regression & Medium & Low & BT \\
+Comment coverage & 33\% & 16\% & HFSM \\
+Transition encoding & Centralized if/elif logic & Distributed condition nodes & BT \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Summary of Findings}
+
+The evaluation results present a consistent comparison across correctness, efficiency, and engineering quality.
+
+\begin{itemize}
+    \item \textbf{Correctness:} Both architectures produced identical behavioral outputs for all seven implemented behaviors. No measurable correctness difference was observed.
+    \item \textbf{Efficiency:} HFSM demonstrated significantly lower runtime overhead, operating approximately $11\times$ faster than BT. However, both architectures remained well within the real-time execution budget.
+    \item \textbf{Engineering Quality:} BT demonstrated stronger extensibility and structural safety. Its distributed condition-node architecture removed the CC$=17$ hotspot, reduced regression risk, and minimized the number of file modifications required for future expansion.
+\end{itemize}
+
+The core trade-off can therefore be summarized as follows:
+
+\begin{itemize}
+    \item \textbf{HFSM:} Better runtime efficiency
+    \item \textbf{BT:} Better extensibility and maintainability safety
+\end{itemize}
+
+The final decision depends on which constraint is more important for Phase II development: computational overhead or long-term architectural scalability.
+
+\subsection{Pros and Cons Summary}
+
+The table below summarizes the key advantages and disadvantages of each architecture across all three evaluation dimensions. It serves as a quick reference for the demonstration and for the final selection rationale.
+
+\subsubsection{NewHFSM}
+
+\paragraph{Advantages:}
+
+\begin{itemize}
+    \item Approximately $11\times$ faster runtime performance
+    \item Higher Maintainability Index
+    \item Better documentation coverage
+    \item Logic separated cleanly across two files
+    \item No dependency on external frameworks
+\end{itemize}
+
+\paragraph{Disadvantages:}
+
+\begin{itemize}
+    \item High-complexity hotspot in \texttt{\_evaluate\_transitions()}
+    \item All seven transition guards centralized in one method
+    \item Greater regression risk during future edits
+    \item More files must be modified for new behaviors
+    \item Interruptive behaviors require edits across multiple states
+\end{itemize}
+
+\subsubsection{NewBT}
+
+\paragraph{Advantages:}
+
+\begin{itemize}
+    \item No major cyclomatic complexity hotspot
+    \item Each \texttt{\_check()} method is isolated and independently testable
+    \item Fewer files modified when adding new behaviors
+    \item Interruptive behaviors added structurally at the root level
+    \item Approximately $2\times$ lower extensibility effort
+\end{itemize}
+
+\paragraph{Disadvantages:}
+
+\begin{itemize}
+    \item Slightly higher runtime overhead due to py\_trees
+    \item All node classes currently exist in one file
+    \item Lower Maintainability Index in current structure
+    \item Dependency on external py\_trees library
+    \item Lower documentation coverage
+\end{itemize}
+
+
 % ===========================================================================
 \chapter{Discussion and Insights}
 \label{sec:discussion}
 % ===========================================================================
-\section{Summary of Key Results and Observations}
+\section{Summary of Key Results and Observations - Perception Module Development }
 
 \begin{itemize}
     \item \textbf{Accuracy :} On the filtered \texttt{BOTH}-tagged rows, LiDAR is
@@ -1255,6 +1533,84 @@ maximum $21.86$\,ms).
     simple correctable bias.
 
 \end{itemize}
+
+\section{Summary of Key Results and Observations - Decision Model Selection }
+
+\subsection{Final Model Selection}
+
+\subsubsection{Selected Model: NewBT}
+
+\textbf{Architecture:} Behavior Tree
+
+\textbf{Decision Gate:} Engineering Tiebreaker
+
+\subsubsection{Decision Gate}
+
+Both architectures successfully passed all behavioral correctness tests. Since both systems also operated comfortably within the real-time budget, the final decision was determined by engineering extensibility and regression safety.
+
+\subsubsection{Criterion-by-Criterion Rationale}
+
+\begin{table}[H]
+\centering
+\caption{Criterion-by-criterion selection rationale}
+\label{tab:selection_rationale}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Criterion} & \textbf{NewHFSM} & \textbf{NewBT} & \textbf{Verdict} \\
+\midrule
+Behavioral correctness & Equivalent & Equivalent & Draw \\
+Decision latency (avg) & Faster & Slower & HFSM \\
+Worst-case CC & 17 & 6 & BT \\
+Files per new behavior & 3 & 2 & BT \\
+Regression risk & Medium & Low & BT \\
+Effort score (3 behaviors) & $E \approx 135$ & $E \approx 69$ & BT \\
+Maintainability Index & Higher & Lower & HFSM \\
+Phase II extensibility & Centralized edits & Root-level insertion & BT \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{The Core Argument}
+
+HFSM provides superior runtime efficiency. However, both architectures execute well below the $10$\,ms real-time constraint, meaning the runtime advantage does not significantly affect system feasibility.
+
+BT, on the other hand, provides a safer and more scalable architecture for future development. New behaviors can be introduced with fewer modifications, fewer dependencies on existing logic, and substantially lower regression risk.
+
+The critical limitation in Phase II is therefore not computational overhead, but extensibility. For this reason, NewBT is the more suitable architecture for continued development.
+
+\subsubsection{Risk and Mitigation}
+
+The primary weakness of NewBT is its single-file implementation structure. Currently, all node classes are contained within \texttt{new\_behavior\_tree.py}, which may reduce maintainability as the system grows.
+
+To mitigate this issue, the following modular refactor is recommended before Phase II expansion:
+
+\begin{itemize}
+    \item \texttt{bt\_conditions.py} $\rightarrow$ condition node classes
+    \item \texttt{bt\_actions.py} $\rightarrow$ action node classes
+    \item \texttt{new\_behavior\_tree.py} $\rightarrow$ tree construction and abstract interfaces only
+\end{itemize}
+
+This refactor would improve maintainability without affecting behavior or interface contracts.
+
+\subsubsection{Impact on Phase II Trajectory Planning}
+
+The \texttt{NewDecisionOutput} interface produced by NewBT is already compatible with trajectory planning integration:
+
+\begin{itemize}
+    \item \texttt{behavior} identifies the active maneuver
+    \item \texttt{target\_speed} provides the required speed setpoint
+    \item \texttt{motion\_state} defines high-level planner intent
+    \item \texttt{risk\_level} allows dynamic safety adaptation
+\end{itemize}
+
+Future trajectory-related behaviors, such as pedestrian crossing, intersection yielding, and roundabout navigation, can be added through isolated condition and action nodes without modifying existing decision logic.
+
+Therefore, NewBT provides the most scalable foundation for Phase II system expansion.
+
+\subsubsection{Final Selection: NewBT}
+
+\textbf{Decision Basis:} Lower extensibility effort and lower regression risk during future behavioral expansion.
+
 
 \section{Insights and Engineering Decisions}
 
@@ -1274,11 +1630,8 @@ stack.
 Accuracy (RMSE) & LiDAR $3.46$\,m vs.\ camera $3.95$\,m. LiDAR $\sim$12\,\% more accurate. & Use LiDAR as the primary distance sensor. \\
 Mean relative error & Camera $6.14\,\%$ vs.\ LiDAR $5.20\,\%$ Both within an acceptable range for mid-distance detection. & Camera must for semantic understanding. \\
 Error consistency (std.\ dev.) & Camera $3.28$\,m, LiDAR $3.00$\,m, the spread exceeds the mean error, indicating scattered errors with long-tail outliers. & Do not trust single-frame readings; apply Kalman or moving-average smoothing before control decisions. \\
-Sensor fusion & Similar error spreads but different failure modes --- the camera struggles with depth, LiDAR with low-reflectivity returns. & Fuse both sensors with inverse-variance weighting ($\approx$52\,\% LiDAR / 48\,\% camera). \\
+Sensor fusion & Similar error spreads but different failure modes - the camera struggles with depth, LiDAR with low-reflectivity returns. & Fuse both sensors with inverse-variance weighting ($\approx$52\,\% LiDAR / 48\,\% camera). \\
 Latency   median & LiDAR $1.72$\,ms vs.\ camera $12.78$\,ms. LiDAR is $\sim$7$\times$ faster. & LiDAR is suited to the real-time / emergency-braking loop. \\
-Latency   95th pct. & Camera spikes to $20.25$\,ms; LiDAR stays under $4.67$\,ms. & The camera pipeline has jitter, investigate frame-processing bottlenecks or budget for the worst case. \\
-Latency   max & Camera peaks at $21.86$\,ms vs.\ LiDAR $7.20$\,ms. & Run the camera and LiDAR on separate threads so camera spikes cannot block the LiDAR loop. \\
-Safety margin & $2\sigma \approx 6$--$7$\,m of uncertainty at the $95\,\%$ confidence level for both sensors. & Build braking-distance buffers with $\sim$6\,m margin; never plan trajectories at the edge of detection range. \\
 Overall & LiDAR-primary, camera-secondary, with temporal smoothing and sensor fusion. & Production stack: LiDAR for the fast loop, a fused estimate for path planning, the camera for classification and redundancy. \\
 \bottomrule
 \end{tabular}
@@ -1291,6 +1644,11 @@ Overall & LiDAR-primary, camera-secondary, with temporal smoothing and sensor fu
     \item \textbf{Added a geometric distance source and experimented against the camera for perception enhancement.} LiDAR supplies
     a direct, camera-independent obstacle distance, and on cleanly matched
     obstacles it is clearly the more accurate of the two sensors.
+  \item \textbf{Selected Behavioral Tree as a efficient decision making algorithm for the \ac{ADAS} architecture.}
+  \item \textbf{Optimized Multi-Stage Perception Model created for low constraint approach (Jetson Orin Nano).} 
+  \item \textbf{Developed the lane detection system to detect multiple lanes and using that able to avoid static obstacles and overtake}
+ The perception pipeline was optimized for the Jetson Orin Nano, achieving a median latency of $1.72$\,ms for LiDAR processing and $12.78$\,ms for camera processing, both within real-time constraints.
+ 
 
 \end{enumerate}
 
@@ -1317,15 +1675,6 @@ The following limitations are evident from the code and the logged results.
 \chapter{Timeline and Resource Required}
 
 \section{Timeline}
-\subsection{7\textsuperscript{th} Semester (December 2025 - April 2026)}
-\label{subsec:semester7}
-
-\begin{table}[H]
-\centering
-\caption{Timeline of activities for the 7\textsuperscript{th} semester (December 2025 - April 2026)}
-\includegraphics[width=0.95\textwidth]{semester7_timeline.png}
-\label{tab:semester7_schedule}
-\end{table}
 
 \subsection{8\textsuperscript{th} Semester (May 2026 - September 2026)}
 \label{subsec:semester8}
@@ -1387,7 +1736,21 @@ Rs.\ 556,868.22 \\ \hline
 
 \chapter{Conclusion}
 
-This project offers a transparent and modular approach for realizing a Level 2 automated driving assistance system catering specifically to urban scenarios. Based on an existing simulation-based Level 1 system developed in Phase I, Phase II enhances the system for supervised partial automation using reinforcement learning to enable and assist, but not replace, deterministic control decisions. The hierarchical architecture allows for easy separation and development along sensing and perception, planning and decision-making, and control functions, facilitating efficient development and integration testing. The perception layer combines camera and LiDAR inputs for reliable and semantic outputs corresponding to detection of objects, lanes, and traffic signals in the operational domain. Decision-making and planning are based on hierarchical planning utilizing rule-based safety planning and learning-based adaptation, and also utilize trajectory planning based on optimization techniques addressing safety, comfort, and optimization objectives. Reinforcement learning is constrained to adaptive parameter tuning to preserve predictability and safety. Model predictive control governs longitudinal and lateral dynamics through the adaptive cruise control module, ensuring smooth speed transitions and safe following behavior. Overall, the proposed Level 2 system offers a robust, safety-aware, and modular foundation for urban driving, with clearly defined operational limits and continuous driver supervision.
+This project implemented a modular Level-2 ADAS with a four-layer architecture and an 
+embedded-optimized perception pipeline. A multi-stage perception node combined YOLOv11-Nano (BDD100K),
+MobileNetV3 (GTSRB) and UFLD-ResNet18 (TuSimple) models were exported to ONNX and compiled as FP16 
+TensorRT engines with CUDA stream parallelism and persistent GPU buffers, enabling real-time rates 
+on Jetson Orin Nano. LiDAR-camera fusion using DBSCAN clustering and pinhole projection produced robust
+geometric distances: LiDAR attained lower RMSE (3.46 m vs 3.95 m) and much lower median latency (1.72 ms vs 12.78 ms), 
+though both sensors showed long-tail error variance, motivating temporal smoothing and inverse-variance fusion. 
+Decision-model evaluation found equal behavioral correctnes, NewHFSM was ~11x faster but NewBT delivered 
+substantially better extensibility and lower regression risk, so NewBT was chosen for Phase II. 
+Engineering decisions therefore prioritize LiDAR for the fast safety loop, fused estimates for planning, 
+and a modular behavior-tree refactor for maintainability. Remaining limitations-small BOTH-match sample 
+and fragile ground-truth association-require expanded validation and stronger identity matching before 
+real-world trials. Overall, the work produces a safety-aware, scalable, and embedded-optimized foundation 
+for Phase II trajectory planning and controlled vehicle deployment.
+
 \section*{Expected Outcomes}
 
 \begin{itemize}
@@ -1395,7 +1758,7 @@ This project offers a transparent and modular approach for realizing a Level 2 a
     \item Open-source software frameworks enabling replication by other researchers
     \item Comprehensive datasets (simulation and real-world) for further research
     \item Validated methodologies for sim-to-real transfer in autonomous driving
-    \item Publications contributing to RL deployment and safety assurance literature
+    \item Publications contributing to ADAS research and development.
 \end{itemize}
 
 This project positions our team at the forefront of autonomous vehicle innovation, combining rigorous engineering with cutting-edge AI research to advance the state-of-the-art in intelligent transportation systems.
