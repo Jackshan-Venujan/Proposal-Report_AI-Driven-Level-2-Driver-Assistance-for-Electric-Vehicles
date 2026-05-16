@@ -1,0 +1,28 @@
+# LaTeX intermediate files
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.fdb_latexmk
+*.out
+*.toc
+*.synctex.gz
+*.bbl
+*.blg
+
+# Build artifacts (optional)
+# Ignore the generated PDF if you don't want it in git
+# Uncomment to ignore PDFs:
+# *.pdf
+
+# Editor files
+.vscode/
+*~
+*.swp
+*.swo
+*.bak
+
+# OS files
+Thumbs.db
+.DS_Store
