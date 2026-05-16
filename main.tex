@@ -1052,14 +1052,14 @@ The longitudinal control logic was extended from fixed-speed driving to adaptive
 
 A major improvement is the implementation of lane-change trajectory planning using a lightweight MPC-style rollout. The controller evaluates multiple steering candidates over a short prediction horizon using a kinematic bicycle model, then selects the command with the lowest predicted lateral error, heading error, and steering variation. This produces smoother and more stable lane-change trajectories than a fixed open-loop steering command.
 
-\begin{figure}[h]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{obstacle_detection.png}
     \caption{Detect Obstacle before lane-change.}
     \label{fig:lane_change1}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.8\linewidth]{obstacle_avoidance.png}
     \caption{Lane-change after satisfying the conditions.}
