@@ -14,7 +14,7 @@
 # Build artifacts (optional)
 # Ignore the generated PDF if you don't want it in git
 # Uncomment to ignore PDFs:
-# *.pdf
+*.pdf
 
 # Editor files
 .vscode/
