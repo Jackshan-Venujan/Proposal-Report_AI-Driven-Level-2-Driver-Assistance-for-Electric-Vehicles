@@ -1285,35 +1285,14 @@ Overall & LiDAR-primary, camera-secondary, with temporal smoothing and sensor fu
 \end{table}
 
 
-\subsection{Objectives Achieved?}
+\section{Objectives Achieved}
 
 \begin{enumerate}
-    \item \textbf{Add a geometric distance source --- achieved.} LiDAR supplies
+    \item \textbf{Added a geometric distance source and experimented against the camera for perception enhancement.} LiDAR supplies
     a direct, camera-independent obstacle distance, and on cleanly matched
     obstacles it is clearly the more accurate of the two sensors.
-    \item \textbf{Make obstacle response conservative --- achieved.} The fused
-    action is the worst case of camera and LiDAR, and the synthetic
-    \texttt{LIDAR\_ONLY} path lets LiDAR alone trigger a response. The control
-    logic in \texttt{driving\_agent.py} now reacts to this fused action.
-    \item \textbf{Enable a quantitative sensor comparison --- achieved with
-    caveats.} The metrics infrastructure exists and produces usable per-obstacle
-    data, but the low \texttt{BOTH}-row count (51 of 902) means the clean
-    comparison rests on a small sample, and the ground-truth association still
-    produces outliers that must be filtered manually.
+
 \end{enumerate}
-
-\subsection{A Plausible Real-World Application}
-
-The most direct real-world transfer of this implementation is a
-\textbf{forward-collision-warning and automatic-emergency-braking (AEB)}
-function for an entry-level ADAS. A vehicle equipped with a windscreen camera
-and a low-cost forward LiDAR could run exactly this pipeline: the camera
-classifies \emph{what} is ahead, the LiDAR measures \emph{how far} it is, and
-the conservative fusion ensures braking is triggered if \emph{either} sensor
-sees danger. The fast ($\sim$1\,ms) LiDAR clustering path is well suited to a
-resource-constrained automotive ECU, and the asymmetric temporal filtering
-directly addresses the real nuisance-braking problem (a single noisy far reading
-must not cancel a brake request).
 
 \subsection{Limitations and Drawbacks}
 \label{sec:limitations}
@@ -1321,59 +1300,18 @@ must not cancel a brake request).
 The following limitations are evident from the code and the logged results.
 
 \begin{itemize}
-    \item \textbf{Single-plane reasoning.} Although the sensor is 3D
-    (32 channels), \texttt{LidarObstacleDetector} clusters only the $(x,y)$
-    projection and reasons about a 2D horizontal plane. Height information is
-    collected (the $z$ extents) but not used for classification.
-
-    \item \textbf{Configured range and density are modest.} The 50\,m range and
-    56\,000\,pts/s rate (Table~\ref{tab:lidarcfg}) are far below production
-    LiDAR. Distant objects return few points, which directly causes the low
-    LiDAR detection rate ($0.10$--$0.27$).
-
-    \item \textbf{Sparse-return failure of bbox projection.} Bounding-box
-    fusion needs enough projected points inside the box; for distant, narrow, or
-    occluded objects it falls through to the angle gate or to camera-only. This
-    is the documented cause of the camera ``safe-by-default'' fallback.
-
-    \item \textbf{Ground-truth association is fragile.}
-    \texttt{\_per\_obstacle\_gt()} matches detections to CARLA actors by angle
+    \item \textbf{Ground-truth association is fragile:}
+    Current system matches detections to CARLA actors by angle
     and distance with fixed gates; when it picks the wrong actor it stamps a
     distant vehicle's range onto a near obstacle, producing long-tail error
     outliers in the raw per-obstacle log that must be filtered out before the
     accuracy metrics can be computed.
 
-    \item \textbf{Small clean-comparison sample.} Only 51 of 902 per-obstacle
+    \item \textbf{Small clean-comparison sample.} Only 33 of 2859 per-obstacle
     rows were \texttt{BOTH}-confirmed, so the favourable LiDAR accuracy result
     rests on a thin slice of the data.
 
-    \item \textbf{No clustering when \texttt{sklearn} is missing.} If
-    \texttt{scikit-learn} is unavailable, \texttt{LidarObstacleDetector}
-    disables clustering entirely and the LiDAR contributes nothing --- a hard
-    dependency in practice despite the guarded import.
-
-    \item \textbf{Single most-recent frame only.} \texttt{LidarSensor} keeps
-    only the latest sweep; if the control loop stalls, an old cloud is silently
-    reused with no staleness check beyond the stored timestamp.
-
-    \item \textbf{Environmental conditions are simulated.} All weather effects
-    are CARLA presets. Real LiDAR degradation in rain, fog, dust, or from
-    retro-reflective surfaces is not represented, so the accuracy figures are
-    optimistic relative to real hardware.
 \end{itemize}
-
-\subsection{Concluding Remark}
-
-LiDAR was integrated as a fast, geometrically grounded second opinion layered
-onto an existing camera perception stack. Its introduction was localized to a
-set of new \texttt{core/} modules but rippled outward: the driving agent's
-control input became a fused two-sensor verdict, new ground-truth and metrics
-machinery was added, and the visualization gained LiDAR-specific overlays. The
-measured outcome is a pipeline that is fast and, when both sensors agree,
-distance-accurate --- but whose coverage is currently limited by a modest sensor
-configuration and a fragile ground-truth association step.
-
-
 
 
 \chapter{Timeline and Resource Required}
