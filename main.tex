@@ -771,14 +771,6 @@ A central data management component maintains system state, logs sensor data and
 
 Virtual sensors in \ac{CARLA} are configured to match the specifications of physical sensors used in hardware deployment. Camera parameters, including resolution, field of view, exposure, and mounting position, are matched to the Arducam specifications. \ac{LiDAR} configuration, including scan rate, vertical and horizontal resolution, range, and point density, is configured to represent the physical \ac{LiDAR} sensor.
 
-\paragraph{Adaptive Cruise Control}
-
-Adaptive Cruise Control is implemented by configuring longitudinal control logic in CARLA to replicate real-vehicle behavior, where radar-/\ac{LiDAR}-based lead vehicle detection, time headway thresholds, and acceleration–deceleration limits are matched to the constraints of the physical electric vehicle platform. Vehicle dynamics parameters, including maximum braking force, throttle response, and control update rate, are tuned to reflect the real drivetrain and actuator characteristics to ensure consistent speed regulation during simulation-to-hardware transfer.
-
-\paragraph{Trajectory Planning and RL-Based Decision Making}
-
-Trajectory planning and RL-based decision-making modules are trained in the \ac{CARLA} environment using vehicle kinematic constraints, lane geometry, and traffic interaction rules that closely approximate real-world operating conditions. The state space, action space, and reward function are designed to align with physical vehicle limits, ensuring that learned policies generate safe, feasible steering and speed commands when deployed on the real electric vehicle under supervised Level 2 autonomy.
-
 \section{\ac{LiDAR}-Perception Module Development and\\Experimentation}
 
 This section explains \ac{LiDAR} as a measurement technology and how it is connected to CARLA 
@@ -1134,6 +1126,9 @@ These models were merged into a single MultiStagePerception \ac{ROS}-compatible 
 
 To optimise this pipeline for real-time deployment on the \ac{NVIDIA} Jetson Orin Nano, several techniques were employed. PyTorch models were exported to \ac{ONNX} and compiled into \ac{TensorRT} engines with \ac{FP16} half-precision quantisation using the `trtexec` tool, reducing memory footprint and inference latency. \ac{CUDA} stream parallelism was implemented to run the \ac{YOLOv11Nano} detector and the lane detection network on separate \ac{GPU} streams. Persistent \ac{GPU} tensor buffers were used to eliminate unnecessary memory allocations between frames. All image preprocessing, including colour-space conversion, resizing and normalisation, was performed on the \ac{GPU} to avoid costly \ac{CPU}-\ac{GPU} transfers. These optimisations allowed the merged perception node to achieve real-time frame rates suitable for embedded autonomous driving on the Jetson Orin Nano platform.
 
+
+
+
 \chapter{ Testing and Performance Evaluation}
 
 This chapter evaluates the LiDAR integration by comparing the LiDAR-measured
@@ -1339,6 +1334,323 @@ camera's $12.78$\,ms, roughly a $7\times$ speed-up and far more predictable,
 with a 95th-percentile latency of $4.67$\,ms versus the camera's $20.25$\,ms.
 The camera pipeline shows pronounced jitter (standard deviation $3.57$\,ms,
 maximum $21.86$\,ms). 
+
+\section{Decision Model Selection for Autonomous Driving Architecture}
+
+\subsection{Objective and Scope}
+
+The primary goal of this evaluation is to determine which decision-making model the Hierarchical Finite State Machine (NewHFSM) or the Behavior Tree (NewBT) should be carried forward into the trajectory planning phase of the autonomous vehicle project. The selected model must demonstrate the best combination of behavioral correctness, computational efficiency, and long-term engineering maintainability.
+
+\subsection{Background and Motivation}
+
+\subsubsection{Why Not Reinforcement Learning?}
+
+During the project proposal phase, Reinforcement Learning (RL) was listed as a candidate approach for the decision-making layer. After careful consideration, RL was set aside for the following reasons:
+
+\begin{itemize}
+    \item \textbf{Computational requirements:} Training a competent RL agent demands substantial GPU resources and large-scale simulation infrastructure not available within this project's constraints.
+    \item \textbf{Data and time cost:} Effective RL policies require millions of simulation steps across diverse scenarios, making development timelines impractical.
+    \item \textbf{Generalization gap:} Even well-trained RL agents frequently fail to generalize from simulation to real-world conditions, a known and well-documented challenge in the literature.
+\end{itemize}
+
+These limitations led the investigation toward rule-based, interpretable architectures that could be implemented, tested, and reasoned about within the project scope. A review of the current autonomous-driving research landscape identified two mature, widely-adopted candidates: Behavior Trees (BT) and Hierarchical Finite State Machines (HFSM).
+
+\subsubsection{Why Compare Before Choosing?}
+
+Instead of just picking an architecture and running with it, an honest, side-by-side comparison was conducted. Both models were built from scratch against identical interfaces --- they take in the same perception data (\texttt{PerceptionState}) and produce the same output (\texttt{NewDecisionOutput} via \texttt{NewController}) --- so the only thing actually being tested is the decision-making layer itself, with no noise from differences in sensing or actuation.
+
+\paragraph{Fair Comparison Guarantee:}
+
+NewHFSM and NewBT both read from the same \texttt{PerceptionState} and write to the same \texttt{NewDecisionOutput}. The controller and sensor pipeline are shared. So any difference observed in behavior, speed, or code quality comes down to one thing: the decision architecture. The comparison examines three dimensions, chosen to reflect both what the project needs right now and what it will need to live with long-term:
+
+\begin{itemize}
+    \item Behavior quality --- did the model actually make the right call in each scenario?
+    \item System efficiency --- how fast is the decision step, and how hard is it on the CPU?
+    \item Engineering quality --- how complex is the code, and how easy will it be to maintain or extend down the road?
+\end{itemize}
+
+\subsection{Evaluation Methodology}
+
+Because these are deterministic rule-based architectures rather than learned models, conventional machine-learning metrics such as accuracy percentages do not apply directly. The evaluation methodology follows established practice from the autonomous systems and robotics literature, which assesses decision models across three complementary axes.
+
+\subsubsection{Behavioral Correctness (Task Success)}
+
+In this context, ``accuracy'' does not mean a classification score --- it means whether the autonomous vehicle actually does the right thing safely in a live, changing environment. That is evaluated through simulation testing across a set of controlled scenarios: static obstacles, traffic lights, and mixed real-world conditions.
+
+\begin{itemize}
+    \item Simulation testing checks whether the system triggers emergency braking when needed, stops at red lights, slows down for obstacles, and recovers from lane loss, all within acceptable response windows.
+    \item The research literature is fairly consistent on this: when both architectures are implemented properly, they produce the same driving behavior. The real difference between BT and HFSM is not in how well the car drives, it is in how the software is structured.
+    \item That equivalence is actually what makes the comparison interesting. Since neither architecture has a meaningful edge in driving accuracy, the tiebreaker has to come from somewhere else --- namely, efficiency and engineering quality, which are what determine whether the project stays healthy over time.
+\end{itemize}
+
+\subsubsection{System Efficiency (Latency and CPU)}
+
+To measure efficiency, each model's \texttt{decide()} function was timed on every frame across three separate simulation runs. Two metrics were tracked: mean decision latency, and 95th-percentile CPU time the latter being useful for catching worst-case spikes that could cause problems in a real-time control loop.
+
+\begin{table}[H]
+\centering
+\caption{Decision latency comparison across three simulation runs}
+\label{tab:decide_latency}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}ccccccc@{}}
+\toprule
+\textbf{Run} & \multicolumn{3}{c}{\textbf{NewBT}} & \multicolumn{3}{c}{\textbf{NewHFSM}} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+& Latency & CPU$_{\text{avg}}$ & CPU$_{\text{p95}}$ & Latency & CPU$_{\text{avg}}$ & CPU$_{\text{p95}}$ \\
+& (ms) & (ms) & (ms) & (ms) & (ms) & (ms) \\
+\midrule
+1 & 0.198 & 0.197 & 0.336 & 0.018 & 0.017 & 0.025 \\
+2 & 0.197 & 0.196 & 0.335 & 0.016 & 0.015 & 0.021 \\
+3 & 0.197 & 0.196 & 0.334 & 0.015 & 0.014 & 0.019 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The results are unambiguous. HFSM is roughly $11\times$ faster than BT across every run, averaging $0.016$\,ms per decision versus $0.197$\,ms for BT. Even at the 95th percentile, HFSM peaks at just $0.025$\,ms compared to BT's $0.336$\,ms.
+
+The BT overhead traces back to the \texttt{py\_trees} framework itself: blackboard writes, node ticking, and tree traversal all add a small but consistent cost on every frame. HFSM, by contrast, just runs a straight if/elif chain with no framework in the way. That said, both models sit comfortably within the real-time budget for a $100\,\text{Hz}$ control loop, which allows $10$\,ms per frame so neither one is actually a latency risk in practice. The reason HFSM's lower overhead still matters is headroom: with Phase II trajectory planning on the horizon, keeping CPU usage lean now leaves more room to work with later.
+
+\subsubsection{Engineering Quality}
+
+The engineering quality of both decision-making architectures was evaluated using a combination of automated software metrics and manual architectural analysis. Three complementary metrics were applied directly to the source code using the Radon analysis toolset: Cyclomatic Complexity, Maintainability Index, and Source Lines of Code (SLOC). In addition, an extensibility study was performed to evaluate the engineering cost of introducing new behaviors during future system expansion.
+
+\paragraph{Cyclomatic Complexity (radon cc):}
+
+Cyclomatic Complexity (CC) measures the number of independent execution paths through a function. Lower values generally indicate code that is easier to understand, test, and maintain. Although both models achieved an overall Grade A average, the internal distribution of complexity differs significantly.
+
+In the NewHFSM architecture, the method \texttt{\_evaluate\_transitions()} reached a cyclomatic complexity value of $17$, corresponding to a Grade C hotspot. This method centralizes all seven transition guards into a single decision block. While functionally correct, this creates a structural bottleneck because any future modification to one behavior may unintentionally affect the priority ordering of all others.
+
+In contrast, the NewBT architecture distributes the same decision logic across several smaller \texttt{\_check()} methods. None of these methods exceeded a CC value of $6$. By isolating conditions into independent nodes, the Behavior Tree reduces coupling between behaviors and lowers the risk of regression when extending the system.
+
+\paragraph{Maintainability Index (radon mi):}
+
+The Maintainability Index (MI) combines Halstead Volume, Cyclomatic Complexity, and total line count into a single score ranging from $0$ to $100$, where higher values indicate better maintainability.
+
+The HFSM implementation achieved MI scores between $60.88$ and $71.86$ across its two source files, indicating relatively strong maintainability. The BT implementation achieved a lower score of $50.96$. This reduction is mainly due to the fact that all node classes, conditions, actions, and tree construction logic are contained within a single $372$-line file.
+
+Although the lower MI score does not indicate poor functionality, it highlights a structural issue that should be addressed before further expansion during Phase II development.
+
+\paragraph{Lines of Code and SLOC:}
+
+The total Lines of Code (LOC) were measured as $503$ for HFSM and $375$ for BT. However, after removing comments and blank lines, the effective Source Lines of Code (SLOC) were $237$ and $220$ respectively, resulting in a relatively small difference of only $17$ lines.
+
+The larger raw LOC value in HFSM is primarily due to its heavier documentation coverage. Approximately $33\,\%$ of HFSM code consists of comments, compared to $16\,\%$ in BT. When normalized per implemented behavior, the two systems are nearly identical:
+
+\begin{itemize}
+    \item HFSM: $33.9$ SLOC per behavior
+    \item BT: $31.4$ SLOC per behavior
+\end{itemize}
+
+This indicates that both architectures require a comparable amount of implementation logic for each behavior.
+
+\paragraph{Cost of Adding a New Behavior:}
+
+To evaluate extensibility, a practical engineering trace was performed using three representative future behaviors. The analysis used the Effort metric proposed in behavior tree literature by Colledanchise and Ögren (2018):
+
+\begin{equation}
+E = (F \times 5) + (L \times 1) + (T \times 3) + (I \times 5)
+\end{equation}
+
+where:
+
+\begin{itemize}
+    \item $F$ = number of files modified
+    \item $L$ = number of lines added or changed
+    \item $T$ = number of new transitions introduced
+    \item $I$ = interrupt-related edits required
+\end{itemize}
+
+The weighting values were used only for relative comparison and are not intended to represent absolute engineering cost.
+
+\begin{table}[H]
+\centering
+\caption{Extensibility results: effort to add representative new behaviors}
+\label{tab:extensibility}
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+\textbf{Test Behavior} & \textbf{NewHFSM Effort} & \textbf{NewBT Effort} & \textbf{Winner} \\
+\midrule
+Yield at Intersection & $\approx 40$ & $\approx 34$ & BT \\
+Pedestrian Emergency Stop & $\approx 60$ & $\approx 16$ & BT (large gap) \\
+Recover after Lane-Lost & $\approx 35$ & $\approx 19$ & BT \\
+\midrule
+Total Effort (sum) & $E \approx 135$ & $E \approx 69$ & BT ($\sim$2$\times$ lower) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The results reveal a major architectural difference between the two models. For additive behaviors, such as ``Yield at Intersection,'' both systems require similar effort. However, the difference becomes substantial for interruptive behaviors that must override currently active states.
+
+In HFSM, interruptive behaviors require modifications to the \texttt{dispatch()} logic of multiple state classes. In BT, the same behavior can usually be added by inserting a single high-priority branch at the root Selector node. Since priority handling is structurally embedded within the tree itself, no modification to existing nodes is required.
+
+\begin{table}[H]
+\centering
+\caption{Full engineering comparison across all evaluation metrics}
+\label{tab:full_comparison}
+\small
+\setlength{\tabcolsep}{2.8pt}
+\begin{tabular}{@{}p{3.8cm}ccc@{}}
+\toprule
+\textbf{Metric} & \textbf{NewHFSM} & \textbf{NewBT} & \textbf{Winner} \\
+\midrule
+Avg Cyclomatic Complexity & 2.18 (Grade A) & 1.87 (Grade A) & BT \\
+Worst-case CC (single fn) & 17 & 6 & BT \\
+Maintainability Index & $60.88$--$71.86$ & $50.96$ & HFSM \\
+Total LOC / SLOC & $503 / 237$ & $375 / 220$ & Comparable \\
+SLOC per behavior & 33.9 & 31.4 & Comparable \\
+Files to add 1 behavior & 3 files & 2 files & BT \\
+Edits to existing code & Centralized edits required & Minimal root insertion & BT \\
+Risk of regression & Medium & Low & BT \\
+Comment coverage & 33\% & 16\% & HFSM \\
+Transition encoding & Centralized if/elif logic & Distributed condition nodes & BT \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Summary of Findings}
+
+The evaluation results present a consistent comparison across correctness, efficiency, and engineering quality.
+
+\begin{itemize}
+    \item \textbf{Correctness:} Both architectures produced identical behavioral outputs for all seven implemented behaviors. No measurable correctness difference was observed.
+    \item \textbf{Efficiency:} HFSM demonstrated significantly lower runtime overhead, operating approximately $11\times$ faster than BT. However, both architectures remained well within the real-time execution budget.
+    \item \textbf{Engineering Quality:} BT demonstrated stronger extensibility and structural safety. Its distributed condition-node architecture removed the CC$=17$ hotspot, reduced regression risk, and minimized the number of file modifications required for future expansion.
+\end{itemize}
+
+The core trade-off can therefore be summarized as follows:
+
+\begin{itemize}
+    \item \textbf{HFSM:} Better runtime efficiency
+    \item \textbf{BT:} Better extensibility and maintainability safety
+\end{itemize}
+
+The final decision depends on which constraint is more important for Phase II development: computational overhead or long-term architectural scalability.
+
+\subsection{Pros and Cons Summary}
+
+The table below summarizes the key advantages and disadvantages of each architecture across all three evaluation dimensions. It serves as a quick reference for the demonstration and for the final selection rationale.
+
+\subsubsection{NewHFSM}
+
+\paragraph{Advantages:}
+
+\begin{itemize}
+    \item Approximately $11\times$ faster runtime performance
+    \item Higher Maintainability Index
+    \item Better documentation coverage
+    \item Logic separated cleanly across two files
+    \item No dependency on external frameworks
+\end{itemize}
+
+\paragraph{Disadvantages:}
+
+\begin{itemize}
+    \item High-complexity hotspot in \texttt{\_evaluate\_transitions()}
+    \item All seven transition guards centralized in one method
+    \item Greater regression risk during future edits
+    \item More files must be modified for new behaviors
+    \item Interruptive behaviors require edits across multiple states
+\end{itemize}
+
+\subsubsection{NewBT}
+
+\paragraph{Advantages:}
+
+\begin{itemize}
+    \item No major cyclomatic complexity hotspot
+    \item Each \texttt{\_check()} method is isolated and independently testable
+    \item Fewer files modified when adding new behaviors
+    \item Interruptive behaviors added structurally at the root level
+    \item Approximately $2\times$ lower extensibility effort
+\end{itemize}
+
+\paragraph{Disadvantages:}
+
+\begin{itemize}
+    \item Slightly higher runtime overhead due to py\_trees
+    \item All node classes currently exist in one file
+    \item Lower Maintainability Index in current structure
+    \item Dependency on external py\_trees library
+    \item Lower documentation coverage
+\end{itemize}
+
+\subsection{Final Model Selection}
+
+\subsubsection{Selected Model: NewBT}
+
+\textbf{Architecture:} Behavior Tree
+
+\textbf{Decision Gate:} Engineering Tiebreaker
+
+\subsubsection{Decision Gate}
+
+Both architectures successfully passed all behavioral correctness tests. Since both systems also operated comfortably within the real-time budget, the final decision was determined by engineering extensibility and regression safety.
+
+\subsubsection{Criterion-by-Criterion Rationale}
+
+\begin{table}[H]
+\centering
+\caption{Criterion-by-criterion selection rationale}
+\label{tab:selection_rationale}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Criterion} & \textbf{NewHFSM} & \textbf{NewBT} & \textbf{Verdict} \\
+\midrule
+Behavioral correctness & Equivalent & Equivalent & Draw \\
+Decision latency (avg) & Faster & Slower & HFSM \\
+Worst-case CC & 17 & 6 & BT \\
+Files per new behavior & 3 & 2 & BT \\
+Regression risk & Medium & Low & BT \\
+Effort score (3 behaviors) & $E \approx 135$ & $E \approx 69$ & BT \\
+Maintainability Index & Higher & Lower & HFSM \\
+Phase II extensibility & Centralized edits & Root-level insertion & BT \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{The Core Argument}
+
+HFSM provides superior runtime efficiency. However, both architectures execute well below the $10$\,ms real-time constraint, meaning the runtime advantage does not significantly affect system feasibility.
+
+BT, on the other hand, provides a safer and more scalable architecture for future development. New behaviors can be introduced with fewer modifications, fewer dependencies on existing logic, and substantially lower regression risk.
+
+The critical limitation in Phase II is therefore not computational overhead, but extensibility. For this reason, NewBT is the more suitable architecture for continued development.
+
+\subsubsection{Risk and Mitigation}
+
+The primary weakness of NewBT is its single-file implementation structure. Currently, all node classes are contained within \texttt{new\_behavior\_tree.py}, which may reduce maintainability as the system grows.
+
+To mitigate this issue, the following modular refactor is recommended before Phase II expansion:
+
+\begin{itemize}
+    \item \texttt{bt\_conditions.py} $\rightarrow$ condition node classes
+    \item \texttt{bt\_actions.py} $\rightarrow$ action node classes
+    \item \texttt{new\_behavior\_tree.py} $\rightarrow$ tree construction and abstract interfaces only
+\end{itemize}
+
+This refactor would improve maintainability without affecting behavior or interface contracts.
+
+\subsubsection{Impact on Phase II Trajectory Planning}
+
+The \texttt{NewDecisionOutput} interface produced by NewBT is already compatible with trajectory planning integration:
+
+\begin{itemize}
+    \item \texttt{behavior} identifies the active maneuver
+    \item \texttt{target\_speed} provides the required speed setpoint
+    \item \texttt{motion\_state} defines high-level planner intent
+    \item \texttt{risk\_level} allows dynamic safety adaptation
+\end{itemize}
+
+Future trajectory-related behaviors, such as pedestrian crossing, intersection yielding, and roundabout navigation, can be added through isolated condition and action nodes without modifying existing decision logic.
+
+Therefore, NewBT provides the most scalable foundation for Phase II system expansion.
+
+\subsubsection{Final Selection: NewBT}
+
+\textbf{Decision Basis:} Lower extensibility effort and lower regression risk during future behavioral expansion.
+
+
 
 % ===========================================================================
 \chapter{Discussion and Insights}
