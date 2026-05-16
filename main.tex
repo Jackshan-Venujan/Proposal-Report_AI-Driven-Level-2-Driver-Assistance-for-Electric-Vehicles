@@ -5,6 +5,7 @@
 \usepackage{tocloft} % For customizing table of contents
 \usepackage{amsmath} % For math environments (e.g., \text) and equations
 \usepackage{booktabs} % Better table rules: \toprule, \midrule, \bottomrule
+\usepackage{longtable} % For tables that span multiple pages
 % Syntax-highlighted code listings (fixes undefined lstlisting errors)
 \usepackage{xcolor}
 \usepackage{listings}
@@ -216,6 +217,86 @@
   long  = Vehicle-to-Vehicle
 }
 
+\DeclareAcronym{YOLO}{
+  short = YOLO,
+  long  = You Only Look Once
+}
+
+\DeclareAcronym{YOLOv11Nano}{
+  short = YOLOv11-Nano,
+  long  = You Only Look Once Version 11
+}
+
+\DeclareAcronym{Nano}{
+  short = Nano,
+  long  = Nano
+}
+
+\DeclareAcronym{BDD100K}{
+  short = BDD100K,
+  long  = Berkeley DeepDrive 100K Dataset
+}
+
+\DeclareAcronym{MobileNetV3}{
+  short = MobileNetV3,
+  long  = Mobile Network Version 3
+}
+
+\DeclareAcronym{GTSRB}{
+  short = GTSRB,
+  long  = German Traffic Sign Recognition Benchmark
+}
+
+\DeclareAcronym{UFLD}{
+  short = UFLD,
+  long  = Ultra-Fast Lane Detection
+}
+
+\DeclareAcronym{MB}{
+  short = MB,
+  long  = Megabyte
+}
+
+\DeclareAcronym{GPU}{
+  short = GPU,
+  long  = Graphics Processing Unit
+}
+
+\DeclareAcronym{NVIDIA}{
+  short = NVIDIA,
+  long  = NVIDIA Corporation (originally from “NV” for Next Version + “IDIA” inspired naming; commonly treated as a company name rather than an acronym)
+}
+
+\DeclareAcronym{ONNX}{
+  short = ONNX,
+  long  = Open Neural Network Exchange
+}
+
+\DeclareAcronym{TensorRT}{
+  short = TensorRT,
+  long  = Tensor Runtime
+}
+
+\DeclareAcronym{FP16}{
+  short = FP16,
+  long  = 16-bit Floating Point Precision
+}
+
+\DeclareAcronym{CUDA}{
+  short = CUDA,
+  long  = Compute Unified Device Architecture
+}
+
+\DeclareAcronym{CPU}{
+  short = CPU,
+  long  = Central Processing Unit
+}
+
+\DeclareAcronym{ResNet18}{
+  short = ResNet-18,
+  long  = Residual Network with 18 layers
+}
+
 \begin{document}
 
 \include{cover}
@@ -246,7 +327,7 @@ This project proposes the development of a Level 2 Advanced Driver Assistance Sy
 \chapter*{Acronyms}
 \addcontentsline{toc}{chapter}{Acronyms}
 
-\begin{tabular}{@{}ll@{}}
+\begin{longtable}{@{}ll@{}}
     \textbf{ACC} & Adaptive Cruise Control \\
     \textbf{ADAS} & Advanced Driver Assistance Systems \\
     \textbf{AI} & Artificial Intelligence \\
@@ -279,7 +360,23 @@ This project proposes the development of a Level 2 Advanced Driver Assistance Sy
     \textbf{TTC} & Time to Collision \\
     \textbf{V2I} & Vehicle-to-Infrastructure \\
     \textbf{V2V} & Vehicle-to-Vehicle \\
-\end{tabular}
+    \textbf{YOLO} & You Only Look Once \\
+    \textbf{YOLOv11-Nano} & You Only Look Once Version 11 \\
+    \textbf{Nano} & Nano \\
+    \textbf{BDD100K} & Berkeley DeepDrive 100K Dataset \\
+    \textbf{MobileNetV3} & Mobile Network Version 3 \\
+    \textbf{GTSRB} & German Traffic Sign Recognition Benchmark \\
+    \textbf{UFLD} & Ultra-Fast Lane Detection \\
+    \textbf{MB} & Megabyte \\
+    \textbf{GPU} & Graphics Processing Unit \\
+    \textbf{NVIDIA} & NVIDIA Corporation (originally from “NV” for Next Version + “IDIA” inspired naming; commonly treated as a company name rather than an acronym) \\
+    \textbf{ONNX} & Open Neural Network Exchange \\
+    \textbf{TensorRT} & Tensor Runtime \\
+    \textbf{FP16} & 16-bit Floating Point Precision \\
+    \textbf{CUDA} & Compute Unified Device Architecture \\
+    \textbf{CPU} & Central Processing Unit \\
+    \textbf{ResNet-18} & Residual Network with 18 layers \\
+\end{longtable}
 \newpage
 
 \renewcommand{\thepage}{\arabic{page}} % Start page numbering in arabic 
@@ -1028,6 +1125,14 @@ When a red traffic signal is detected, the ACC system computes the required dece
 \paragraph{Speed Limits and Curvature}
 
 The ACC system respects speed limits detected from traffic sign recognition and reduces speed for sharp curves based on estimated curve radius and assumed lateral acceleration limits \cite{ref40}.
+
+\section{Multi-Stage Perception Model Training and Jetson Optimization}
+
+In order to address the perception requirements of the driving system, three deep learning models were trained and used as a merged multi-stage pipeline. The first model is a \ac{YOLOv11Nano} object detector trained on the \ac{BDD100K} dataset to detect obstacles including cyclists, cars, trucks, buses, motorcycles, traffic signs and traffic lights. The second model is a lightweight \ac{MobileNetV3}-Small classifier trained on the \ac{GTSRB} dataset (43 classes) to accurately classify detected sign crops. The third model is an \ac{UFLD} network with a \ac{ResNet18} backbone trained on the TuSimple benchmark for real-time lane boundary detection. The UFLD weights were reduced from approximately 240 \ac{MB} to about 100 \ac{MB} by removing auxiliary head parameters and \ac{CARLA} simulation–specific layers not needed for real-world scenarios; this was performed using state-dictionary filtering to retain only the fundamental lane parsing network weights.
+
+These models were merged into a single MultiStagePerception \ac{ROS}-compatible node. The \ac{YOLOv11Nano} detector first localises objects and traffic-sign regions in the input frame, the \ac{MobileNetV3} classifier performs recognition on cropped sign regions using batched \ac{GPU} inference, and \ac{UFLD} simultaneously processes a resized input to predict lane boundaries.
+
+To optimise this pipeline for real-time deployment on the \ac{NVIDIA} Jetson Orin Nano, several techniques were employed. PyTorch models were exported to \ac{ONNX} and compiled into \ac{TensorRT} engines with \ac{FP16} half-precision quantisation using the `trtexec` tool, reducing memory footprint and inference latency. \ac{CUDA} stream parallelism was implemented to run the \ac{YOLOv11Nano} detector and the lane detection network on separate \ac{GPU} streams. Persistent \ac{GPU} tensor buffers were used to eliminate unnecessary memory allocations between frames. All image preprocessing, including colour-space conversion, resizing and normalisation, was performed on the \ac{GPU} to avoid costly \ac{CPU}-\ac{GPU} transfers. These optimisations allowed the merged perception node to achieve real-time frame rates suitable for embedded autonomous driving on the Jetson Orin Nano platform.
 
 \chapter{ Testing and Performance Evaluation}
 
