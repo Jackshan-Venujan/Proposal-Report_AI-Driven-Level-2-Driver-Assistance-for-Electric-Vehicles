@@ -943,9 +943,9 @@ A secondary PID controller minimizes heading error (angle between vehicle headin
 
 The final steering command combines outputs from lateral and heading controllers through weighted summation. Weights are tuned to achieve a critically damped response with minimal overshoot.
 
-\paragraph{Speed Adaptation}
+\paragraph{Adjacent Lane Detection}
 
-Controller gains are adapted based on vehicle speed, as steering response characteristics change with velocity. At lower speeds, higher gains provide more responsive correction, while at higher speeds, reduced gains prevent excessive control action.
+A major progress point in the current implementation is adjacent-lane awareness. The lane detector now produces a lane layout summary that identifies the lane boundaries and estimates whether the left or right adjacent lane is clear enough for a maneuver. This information is used by the driving agent when deciding whether to start an overtake, and it helps prevent lane changes into unsafe or poorly detected regions.
 
 \paragraph{Safety Limits}
 
@@ -981,31 +981,43 @@ The states of the agent are a compact state space including the speed of the ego
 
 \subsection{Trajectory Planning Module}
 
-The trajectory planning module generates a feasible and smooth longitudinal trajectory based on the selected driving mode and safety parameters provided by the decision-making layer.
+The main progress in this work is the transition from basic lane-following control to an integrated local trajectory planning module that supports lane keeping, safe lane changing, and overtaking. In the current implementation, the driving agent no longer relies only on a simple steering response; instead, it combines lane perception, adjacent-lane awareness, lead-vehicle monitoring, and short-horizon maneuver planning to generate safer and smoother vehicle motion.
 
-Key responsibilities include:
+\paragraph{Progress in Longitudinal Planning}
 
-\begin{itemize}
-    \item Generating target speed profiles along the ego-lane that maintain safe following distances and comply with traffic signals.
-    \item Ensuring smooth transitions between acceleration, cruising, and deceleration to enhance passenger comfort.
-    \item Respecting vehicle dynamic limits, including acceleration, jerk, and braking constraints.
-    \item Adjusting trajectory optimization cost weights based on risk levels supplied by the decision-making module, where higher perceived risk increases penalties on speed, acceleration, and proximity to obstacles, resulting in more cautious and conservative motion profiles.
-\end{itemize}
+The longitudinal control logic was extended from fixed-speed driving to adaptive behavior based on traffic conditions. The agent now performs emergency braking, speed tapering, and car-following depending on the distance to the lead vehicle. When a lane change is being executed, the throttle is adjusted to maintain enough momentum for the ego vehicle to complete the maneuver safely.
 
-Trajectory planning is formulated as a local planning problem and implemented using:
+\paragraph{Progress in Lane-Change Planning}
 
-\begin{itemize}
-    \item Lane-centerline-based planning for Level 2 operation.
-    \item Polynomial or spline-based trajectory generation to ensure continuity in velocity and acceleration.
-    \item Model Predictive Control (MPC) for longitudinal trajectory optimization over a receding horizon, enabling real-time adjustment to dynamic traffic conditions.
-\end{itemize}
+A major improvement is the implementation of lane-change trajectory planning using a lightweight MPC-style rollout. The controller evaluates multiple steering candidates over a short prediction horizon using a kinematic bicycle model, then selects the command with the lowest predicted lateral error, heading error, and steering variation. This produces smoother and more stable lane-change trajectories than a fixed open-loop steering command.
 
-\paragraph{Integration with Adaptive Cruise Control}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{obstacle_detection.png}
+    \caption{Detect Obstacle brfore lane-change.}
+    \label{fig:lane_change1}
+\end{figure}
 
-The result from the trajectory planning module is the target speed and acceleration to the Adaptive Cruise Control (ACC) module. This is followed by the execution of the targets from the ACC module while ensuring a safe distance from the preceding vehicles as well as traffic signals.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{obstacle_avoidance.png}
+    \caption{Lane-change after satify the conditions.}
+    \label{fig:lane_change2}
+\end{figure}
 
-Hierarchical decentralization of decision-making tasks and trajectory planning reduces modularity issues, interpretability, and validation of security by incorporating elements of learnability that do not deteriorate deterministic control scenarios.
-\subsection{Adaptive Cruise Control Development}
+\paragraph{Progress in Perception-Aware Decision Making}
+
+Another important progress point is adjacent lane detection. The lane detector now estimates the ego lane and also identifies whether the left or right adjacent lane is clear enough for overtaking. This lane layout information is used by the decision-making layer before initiating a lane change. If the vision-based lane layout is uncertain, the agent can fall back to CARLA map topology, which improves robustness when lane markings are weak or partially lost.
+
+\paragraph{Progress in Safety Handling}
+
+Safety handling was also strengthened. Lane changes are only allowed when the ego speed, lead-vehicle distance, and speed difference satisfy the overtake conditions, and a cooldown timer prevents repeated maneuvers. If lane detection confidence drops or the lane is lost, the vehicle transitions to a safer stop-and-hold behavior instead of continuing aggressive control.
+
+\paragraph{Implementation Summary}
+
+Overall, the progress achieved in this module is the development of a perception-driven trajectory planning pipeline that integrates lane keeping, ACC-based longitudinal control, adjacent lane detection, and MPC-style lane-change steering. This gives the system the ability to perform smoother and safer lane changes while responding conservatively to uncertain perception or unsafe traffic conditions.
+
+
 
 The Adaptive Cruise Control (ACC) system regulates vehicle speed to maintain safe following distances from lead vehicles while tracking a driver-specified target speed when no lead vehicle is present \cite{ref1,ref32}.
 
