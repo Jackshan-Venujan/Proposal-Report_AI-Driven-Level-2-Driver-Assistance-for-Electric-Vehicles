@@ -1032,13 +1032,39 @@ A secondary PID controller minimizes heading error (angle between vehicle headin
 
 The final steering command combines outputs from lateral and heading controllers through weighted summation. Weights are tuned to achieve a critically damped response with minimal overshoot.
 
-\paragraph{Speed Adaptation}
+\paragraph{Adjacent Lane Detection}
 
-Controller gains are adapted based on vehicle speed, as steering response characteristics change with velocity. At lower speeds, higher gains provide more responsive correction, while at higher speeds, reduced gains prevent excessive control action.
+A major progress point in the current implementation is adjacent-lane awareness. The lane detector now produces a lane layout summary that identifies the lane boundaries and estimates whether the left or right adjacent lane is clear enough for a maneuver. This information is used by the driving agent when deciding whether to start an overtake, and it helps prevent lane changes into unsafe or poorly detected regions.
 
 \paragraph{Safety Limits}
 
 Steering commands are limited to maximum rates and magnitudes compatible with vehicle kinematics and passenger comfort. If lane detection confidence drops below a threshold, the controller reduces gain or disengages entirely, alerting the driver to resume manual control.
+
+\section{Trajectory Planning Module}
+
+The main progress in this work is the transition from basic lane-following control to an integrated local trajectory planning module that supports lane keeping, safe lane changing, and overtaking. In the current implementation, the driving agent no longer relies only on a simple steering response; instead, it combines lane perception, adjacent-lane awareness, lead-vehicle monitoring, and short-horizon maneuver planning to generate safer and smoother vehicle motion.
+
+\paragraph{Progress in Longitudinal Planning}
+
+The longitudinal control logic was extended from fixed-speed driving to adaptive behavior based on traffic conditions. The agent now performs emergency braking, speed tapering, and car-following depending on the distance to the lead vehicle. When a lane change is being executed, the throttle is adjusted to maintain enough momentum for the ego vehicle to complete the maneuver safely.
+
+\paragraph{Progress in Lane-Change Planning}
+
+A major improvement is the implementation of lane-change trajectory planning using a lightweight MPC-style rollout. The controller evaluates multiple steering candidates over a short prediction horizon using a kinematic bicycle model, then selects the command with the lowest predicted lateral error, heading error, and steering variation. This produces smoother and more stable lane-change trajectories than a fixed open-loop steering command.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{obstacle_detection.png}
+    \caption{Detect Obstacle brfore lane-change.}
+    \label{fig:lane_change1}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{obstacle_avoidance.png}
+    \caption{Lane-change after satify the conditions.}
+    \label{fig:lane_change2}
+\end{figure}
 
 \section{Multi-Stage Perception Model Training and Jetson Optimization}
 
