@@ -3,6 +3,28 @@
 \usepackage{float} % For [H] table placement (prevents floating)
 \usepackage{titlesec} % For customizing section titles
 \usepackage{tocloft} % For customizing table of contents
+\usepackage{amsmath} % For math environments (e.g., \text) and equations
+\usepackage{booktabs} % Better table rules: \toprule, \midrule, \bottomrule
+% Syntax-highlighted code listings (fixes undefined lstlisting errors)
+\usepackage{xcolor}
+\usepackage{listings}
+\lstdefinelanguage{Python}{%
+  morekeywords={self, None, True, False, return, def, if, else, elif, for, while, in, import, from, as, with, class, try, except, finally, raise, yield},%
+  sensitive=true,%
+  morecomment=[l]{\#},%
+  morestring=[b]",%
+  morestring=[b]'%
+}
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{magenta},
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+}
 \usepackage{acro} % For acronyms
 %% ____Bibliography____%%
 \usepackage[numbers,sort&compress]{natbib}
@@ -265,7 +287,7 @@ This project proposes the development of a Level 2 Advanced Driver Assistance Sy
 
 % Main Content
 \chapter{Introduction}
-\section{Background}
+\section{Problem Background}
 The automotive industry is experiencing a paradigm shift towards automation, triggered by the prospect of lowering accident rates and improving traffic flow. \ac{ADAS}, particularly the automation standard for Level 2 (L2) as classified by the \ac{SAE}, represent a fundamental development in this area. L2 automation provides sustained lateral (steering) and longitudinal (acceleration and braking) control while operating under constant human observation~\cite{ref1}.
 These technologies have already been developed in the automotive industry using many sensors and learning-based systems, as seen in self-driving cars from companies like Tesla and Waymo. However, there is still a large “Safety Technology Divide.” Most existing systems are designed for well-structured roads and traffic conditions found in developed countries. As a result, they often do not work well in unstructured and unpredictable traffic environments commonly seen in developing regions. This proposed project builds directly on the successful results of Phase 1. In Phase 1, deep learning models for lane detection and object classification showed good performance on synthetic datasets. In addition, \ac{PID} algorithms were able to control the vehicle effectively in a simulated urban environment using the CARLA simulator.
 The proposed project now moves to Phase 2: Focusing on level 2 autonomy. In this phase, the work integrates the level 1 autonomy features along with level 2 features including lane keeping assistant, adaptive cruise control, decision making and trajectory planning. The main goal is to integrate computer vision and decision making algorithms to achieve level 2 autonomy. To achieve this, the project will use LiDAR sensors together with cameras. Unlike cameras, LiDAR sensors are not affected by changes in lighting or surface textures. They can provide accurate 3D distance and shape information, which is essential for detecting obstacles in real-world driving conditions. This phase will focus on reducing the simulation-to-real (Sim-to-Real) gap by addressing practical challenges such as sensor noise, changing lighting conditions. The final goal is to develop a working Level-2 driver assistance system that can be added to existing electric vehicles as a retrofit solution.
@@ -660,17 +682,250 @@ Adaptive Cruise Control is implemented by configuring longitudinal control logic
 
 Trajectory planning and RL-based decision-making modules are trained in the \ac{CARLA} environment using vehicle kinematic constraints, lane geometry, and traffic interaction rules that closely approximate real-world operating conditions. The state space, action space, and reward function are designed to align with physical vehicle limits, ensuring that learned policies generate safe, feasible steering and speed commands when deployed on the real electric vehicle under supervised Level 2 autonomy.
 
-\subsection{Perception Module Development}
+\section{\ac{LiDAR}-Perception Module Development and\\Experimentation}
 
-\subsubsection{Object Detection}
+This section explains \ac{LiDAR} as a measurement technology and how it is connected to CARLA 
+simulation software systems, LiDAR point clouds are processed to identify clusters 
+corresponding to potential obstacles. \cite{ref4}
+\paragraph{How \ac{LiDAR} Measures Distance} :
+\ac{LiDAR} is an active ranging technology. A
+laser emitter sends out a short, collimated pulse of light. The pulse travels
+outward, strikes a surface, and a fraction of the energy is reflected back to a
+co-located photodetector. Because the speed of light $c$ is constant and known,
+the distance $d$ to the reflecting surface follows directly from the round-trip
+\emph{time of flight} (ToF) $\Delta t$:
 
-\paragraph{LiDAR Integration}
+\begin{equation}
+d = \frac{c \cdot \Delta t}{2}
+\label{eq:tof}
+\end{equation}
 
-\ac{LiDAR} point clouds are processed to identify clusters corresponding to potential obstacles \cite{ref4}. A voxel-based approach segments the point cloud, groups adjacent points into clusters, and fits bounding boxes to clusters. Camera detections and \ac{LiDAR} clusters are associated using spatial correspondence, with combined detections providing both semantic class information (from camera) and accurate 3D position (from \ac{LiDAR}).
+The factor of two is used because the pulse travels from the sensor to the target and 
+then returns back to the sensor. Therefore, one emitted pulse provides one distance 
+measurement along a single direction.
 
-\paragraph{Output Format}
+To create a useful representation of the surrounding environment, the emitted beam is 
+scanned across different directions. A mechanical or solid-state system rotates or steers 
+the beam over a range of horizontal angles (azimuth), while multiple laser channels cover 
+different vertical angles (elevation). Each emitted pulse generates one measurement point. 
+By combining the measured distance with the known azimuth $\theta$ and elevation $\phi$ 
+angles of the beam, the polar coordinate measurement can be converted into a Cartesian 
+coordinate system.
 
-Detections are published as a structured message containing object class, 2D bounding box coordinates, 3D position estimate, and confidence score. Detection rate targets 10 Hz minimum to enable responsive control.
+\begin{equation}
+x = d\cos\phi\cos\theta, \qquad
+y = d\cos\phi\sin\theta, \qquad
+z = d\sin\phi
+\label{eq:polar}
+\end{equation}
+
+The accumulated set of $(x, y, z)$ coordinates collected during one full sweep
+is called a \emph{point cloud}. Many sensors also record the returned pulse
+\emph{intensity} (reflectivity) as a fourth value per point. The number of full
+sweeps performed per second is the \emph{rotation} or \emph{scan frequency}, and
+the number of pulses fired per second sets the point-cloud density.
+
+\subsection{Research Design and Core Theory}
+
+The experiment uses LiDAR for \emph{obstacle detection} alongside the existing
+monocular camera. CARLA's ray-cast LiDAR already gives each point as a ready-made
+$(x, y, z)$ coordinate, so the project's code never has to do the raw
+travel-time-to-distance step of Equation~\ref{eq:tof}, the simulator handles
+it. The project's own distance work starts after that: it groups the points into
+objects and measures the distance to each object. Two methods are used:
+
+\label{sec:tof-ref}
+\begin{itemize}
+    \item \textbf{Euclidean clustering for obstacle detection :} Raw points are
+    grouped into discrete obstacles using density-based spatial clustering
+    (DBSCAN), implemented in \texttt{lidar\_obstacle\_detector.py}. Each cluster
+    is reduced to a centroid, and the horizontal distance to that centroid is
+    taken as the obstacle distance:
+    \begin{equation}
+    d_{\text{obs}} = \sqrt{c_x^2 + c_y^2}, \qquad
+    \theta_{\text{obs}} = \operatorname{atan2}(c_y, c_x)
+    \label{eq:centroid}
+    \end{equation}
+    where $(c_x, c_y)$ is the mean of the cluster's points in the sensor's
+    horizontal plane.
+
+    \item \textbf{Projective cross-sensor association :} LiDAR distance is tied
+    to a camera detection by projecting the LiDAR points onto the camera
+    image. The method has two fixed
+    ingredients: a pinhole camera model derived from the $90^\circ$ FOV,
+    and a fixed extrinsic transform. The known $0.4$\,m height gap and
+    $-15^\circ$ pitch between the two sensors. Both sensors are rigidly mounted
+    at known positions, so this transform is hard-coded rather than estimated.
+    Each LiDAR point is mapped to a pixel. Points landing inside a camera
+    bounding box give that detection its LiDAR distance (their median forward
+    depth).  This is a projection not triangulation or SLAM. No mapping or
+    localization sub-system is built. Depth is
+    already supplied directly by the LiDAR, and the sensor poses are already
+    known.
+\end{itemize}
+
+\subsubsection{Objective of the LiDAR Integration}
+
+\begin{enumerate}
+    \item \textbf{Add a geometric distance source.} Provide an obstacle-distance
+    estimate that does not depend on the monocular camera's object-height
+    assumption. The camera detector estimates distance from bounding-box height
+    and a hard-coded real-world object height,
+    which is inherently approximate. LiDAR supplies a direct measurement.
+
+    \item \textbf{Enable a quantitative sensor comparison.} A metrics
+    logger records camera distance, LiDAR
+    distance, and CARLA ground truth per frame and per obstacle so the two
+    sensors can be evaluated head-to-head.
+\end{enumerate}
+
+\subsubsection{Rationale for Hardware, Tools, and Algorithms}
+
+\begin{itemize}
+    \item \textbf{Sensor model :} CARLA's \texttt{sensor.lidar.ray\_cast}
+    blueprint is used. This is a simulated ray-cast LiDAR. 
+    It runs entirely in the CARLA simulator.
+    
+
+    \item \textbf{Sensor configuration :} The blueprint attributes set in
+    the system are listed in Table~\ref{tab:lidarcfg}. They were chosen to
+    emulate a mid-range automotive scanning LiDAR: a 32-channel vertical stack,
+    a 50\,m range that matches the obstacle-detection working distance, and a
+    20\,Hz rotation rate that comfortably exceeds the control-loop cadence.
+
+    \item \textbf{DBSCAN clustering :} DBSCAN was chosen because it groups points by spatial density
+    without needing the number of clusters in advance, and labels sparse returns
+    as noise. This is ideal for LiDAR data, which often has variable point density and may include outliers.
+    The algorithm's parameters (epsilon and minimum samples) are tuned to balance sensitivity to small obstacles
+    and robustness against noise in the point cloud.
+
+    \item \textbf{NumPy :} All point-cloud manipulation uses NumPy arrays for vectorized
+    filtering of large $N \times 4$ buffers.
+
+    \item \textbf{OpenCV :} is used to render the bird's-eye-view
+    (BEV) debugging canvas and the on-screen metrics panel.
+
+    \item \textbf{Pinhole projection for fusion :} A simple pinhole camera model
+    with a pitch-corrected extrinsic transform was chosen over a full calibrated
+    projection matrix because both sensors are rigidly mounted at known
+    transforms in simulation, so the extrinsics are exactly known.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{LiDAR sensor configuration, from the system implementation.}
+\label{tab:lidarcfg}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Attribute} & \textbf{Value} & \textbf{Meaning} \\
+\midrule
+\texttt{channels}            & 64      & Vertical laser channels \\
+\texttt{points\_per\_second} & 1000\,000 & Pulse rate \\
+\texttt{rotation\_frequency} & 20      & Full sweeps per second (Hz) \\
+\texttt{range}               & 100      & Maximum range (m) \\
+\texttt{upper\_fov}          & 5       & Topmost channel elevation (deg) \\
+\texttt{lower\_fov}          & $-25$   & Bottommost channel elevation (deg) \\
+Mount transform              & $x=2.0,\ z=1.8$ & Sensor offset on ego (m) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Implementation of the LiDAR Perception Module}
+
+\subsubsection{Architecture of LiDAR Integration}
+\begin{figure}[ht!]
+  \centering
+  % If the PNG exists include it, otherwise show a placeholder box so compilation doesn't fail
+  \IfFileExists{LiDAR-Perception-Architecture.drawio.png}{%
+    \includegraphics[width=0.95\textwidth]{LiDAR-Perception-Architecture.drawio.png}
+  }{%
+    \fbox{\parbox{0.95\linewidth}{\centering Missing image: LiDAR-Perception-Architecture.drawio.png}}
+  }
+  \caption[LiDAR perception module architecture]{LiDAR perception module and integration architecture.}
+  \label{fig:lidar-arch}
+\end{figure}
+
+The LiDAR feature is wired into the existing \texttt{DrivingAgent}. The camera detection
+modules were left functionally intact; their \emph{output} is now consumed by
+the new fusion stage rather than driving control directly.
+Figure~\ref{fig:lidar-arch} shows the module-level architecture.
+
+\subsubsection{Step-by-Step Implementation}
+
+\paragraph{Initialization and Configuration :}
+
+The LiDAR sensor is created and configured with the attributes of Table~\ref{tab:lidarcfg}, and wrapped in the
+project's \texttt{LidarSensor} class. 
+
+\paragraph{Reading and Parsing Raw LiDAR Data :}
+
+CARLA delivers each scan as a flat byte buffer. Then buffer reinterprets the 
+buffer as 32-bit floats and reshapes it into an $N \times 4$
+matrix with columns $[x, y, z, \text{intensity}]$, in the sensor-local frame
+($+X$ forward, $+Y$ right, $+Z$ up).
+
+\paragraph{Preprocessing (Filtering the Point Cloud) :}
+
+Raw LiDAR data is converted into a clean $M \times 3$ XYZ array by applying three
+raw $N \times 4$ cloud into a clean $M \times 3$ XYZ array by applying three
+filters in sequence:
+
+\begin{enumerate}
+    \item \textbf{Ground removal} - discard points below
+    \texttt{ground\_z\_threshold} ($-1.4$\,m in the sensor frame, since the
+    sensor sits $1.8$\,m above the road).
+    \item \textbf{Horizontal range filter} - keep points whose horizontal
+    distance lies between \texttt{min\_range} ($0.5$\,m) and \texttt{max\_range}
+    ($100$\,m).
+    \item \textbf{Ego-body filter} - discard self-returns within
+    \texttt{ego\_radius} ($1.5$\,m) of the sensor.
+\end{enumerate}
+
+\paragraph{Clustering, Distance, and Danger Classification :}
+
+DBSCAN algorithm is applied
+(\texttt{eps}\,$=0.4$, \texttt{min\_samples}\,$=10$) on the \emph{horizontal}
+$(x,y)$ projection of the filtered cloud. Each non-noise cluster is reduced to a
+centroid; the obstacle distance and bearing follow from
+Equation~\ref{eq:centroid}. The bearing is used to assign a \emph{sector}:
+\texttt{front} ($|\theta| \le 30^\circ$), \texttt{side\_left} /
+\texttt{side\_right} ($30^\circ < |\theta| \le 150^\circ$), or rear (discarded).
+
+Each obstacle is classified into a danger level
+(\texttt{drive}, \texttt{cautious}, \texttt{slow}, \texttt{stop},
+\texttt{emergency\_stop}) against
+speed-adaptive distance thresholds. The base thresholds are
+$3$\,m (emergency), $5$\,m (stop), $10$\,m (slow), and $15$\,m (cautious); each
+is widened by a term proportional to the ego speed
+(\texttt{speed\_factor}\,$=0.5$), so faster driving triggers earlier responses.
+Side-sector obstacles are capped at \texttt{cautious} and never force a stop.
+
+\paragraph{LiDAR-to-Camera Projection :}
+
+LiDAR points projects into the camera image. Camera intrinsics are derived from the
+$90^\circ$ FOV; the extrinsic transform accounts for the $0.4$\,m vertical
+offset between the LiDAR ($z=1.8$) and the camera ($z=1.4$) and the camera's
+$-15^\circ$ pitch. The projection translates $z$, applies the inverse pitch
+rotation, and then performs a pinhole projection:
+
+\paragraph{Camera--LiDAR Fusion :}
+For each camera detection it attempts, in priority order as below:
+
+\begin{enumerate}
+    \item \textbf{Bounding-box projection} (\texttt{FULL\_BBOX}) - project raw
+    LiDAR points into the camera frame and take the median depth of points
+    inside the box. This is the preferred method.
+    \item \textbf{Angle fallback} (\texttt{FULL\_ANGLE}) - if too few points
+    project into the box, match the detection to the nearest front-sector LiDAR
+    cluster within a $15^\circ$ horizontal gate, additionally requiring that the
+    two distances agree to within 40\,\%.
+    \item \textbf{Camera-Only} (\texttt{CAMERA\_ONLY}) - no LiDAR match; the
+    monocular distance is retained. This data will be logged as labeled as \textbf{Camera-Only} but not used for the experiment.
+\end{enumerate}
+
+Front-sector LiDAR clusters that match no camera detection are still emitted as
+synthetic \texttt{LIDAR\_ONLY} obstacles, so a LiDAR-only objects also will be logged as well. 
+This allows for a comprehensive comparison of the two sensors' detection capabilities.
 
 \subsection{Lane Keeping Assistance Development}
 
