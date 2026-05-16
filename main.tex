@@ -5,6 +5,7 @@
 \usepackage{tocloft} % For customizing table of contents
 \usepackage{amsmath} % For math environments (e.g., \text) and equations
 \usepackage{booktabs} % Better table rules: \toprule, \midrule, \bottomrule
+\usepackage{longtable} % Multi-page tables
 % Syntax-highlighted code listings (fixes undefined lstlisting errors)
 \usepackage{xcolor}
 \usepackage{listings}
@@ -246,41 +247,55 @@ This project proposes the development of a Level 2 Advanced Driver Assistance Sy
 \chapter*{Acronyms}
 \addcontentsline{toc}{chapter}{Acronyms}
 
-\begin{tabular}{@{}ll@{}}
-    \textbf{ACC} & Adaptive Cruise Control \\
-    \textbf{ADAS} & Advanced Driver Assistance Systems \\
-    \textbf{AI} & Artificial Intelligence \\
-    \textbf{AV} & Autonomous Vehicle \\
-    \textbf{CAN} & Controller Area Network \\
-    \textbf{CNN} & Convolutional Neural Network \\
-    \textbf{DRL} & Deep Reinforcement Learning \\
-    \textbf{ECU} & Electronic Control Unit \\
-    \textbf{EV} & Electric Vehicle \\
-    \textbf{FSD} & Full Self-Driving \\
-    \textbf{FOV} & Field of View \\
-    \textbf{GPS} & Global Positioning System \\
-    \textbf{HIL} & Hardware-in-the-Loop \\
-    \textbf{HPC} & High-Performance Computing \\
-    \textbf{ISO} & International Organization for Standardization \\
-    \textbf{LCA} & Lane Centring Assistance \\
-    \textbf{LCC} & Lane Centring Control \\
-    \textbf{LiDAR} & Light Detection and Ranging \\
-    \textbf{LKA} & Lane Keeping Assistant \\
-    \textbf{ML} & Machine Learning \\
-    \textbf{MPC} & Model Predictive Control \\
-    \textbf{ODD} & Operational Design Domain \\
-    \textbf{PID} & Proportional-Integral-Derivative \\
-    \textbf{RADAR} & Radio Detection and Ranging \\
-    \textbf{RL} & Reinforcement Learning \\
-    \textbf{ROS} & Robot Operating System \\
-    \textbf{SAE} & Society of Automotive Engineers \\
-    \textbf{SOTIF} & Safety of the Intended Functionality \\
-    \textbf{TEB} & Timed Elastic Band \\
-    \textbf{TTC} & Time to Collision \\
-    \textbf{V2I} & Vehicle-to-Infrastructure \\
-    \textbf{V2V} & Vehicle-to-Vehicle \\
-\end{tabular}
-\newpage
+\begin{longtable}{@{}ll@{}}
+  \textbf{ACC} & Adaptive Cruise Control \\
+  \textbf{ADAS} & Advanced Driver Assistance Systems \\
+  \textbf{AI} & Artificial Intelligence \\
+  \textbf{AV} & Autonomous Vehicle \\
+  \textbf{CAN} & Controller Area Network \\
+  \textbf{CNN} & Convolutional Neural Network \\
+  \textbf{DRL} & Deep Reinforcement Learning \\
+  \textbf{ECU} & Electronic Control Unit \\
+  \textbf{EV} & Electric Vehicle \\
+  \textbf{FSD} & Full Self-Driving \\
+  \textbf{FOV} & Field of View \\
+  \textbf{GPS} & Global Positioning System \\
+  \textbf{HIL} & Hardware-in-the-Loop \\
+  \textbf{HPC} & High-Performance Computing \\
+  \textbf{ISO} & International Organization for Standardization \\
+  \textbf{LCA} & Lane Centring Assistance \\
+  \textbf{LCC} & Lane Centring Control \\
+  \textbf{LiDAR} & Light Detection and Ranging \\
+  \textbf{LKA} & Lane Keeping Assistant \\
+  \textbf{ML} & Machine Learning \\
+  \textbf{MPC} & Model Predictive Control \\
+  \textbf{ODD} & Operational Design Domain \\
+  \textbf{PID} & Proportional-Integral-Derivative \\
+  \textbf{RADAR} & Radio Detection and Ranging \\
+  \textbf{RL} & Reinforcement Learning \\
+  \textbf{ROS} & Robot Operating System \\
+  \textbf{SAE} & Society of Automotive Engineers \\
+  \textbf{SOTIF} & Safety of the Intended Functionality \\
+  \textbf{TEB} & Timed Elastic Band \\
+  \textbf{TTC} & Time to Collision \\
+  \textbf{V2I} & Vehicle-to-Infrastructure \\
+  \textbf{V2V} & Vehicle-to-Vehicle \\
+  \textbf{YOLO} & You Only Look Once \\
+  \textbf{YOLOv11-Nano} & You Only Look Once Version 11 Nano \\
+  \textbf{BDD100K} & Berkeley DeepDrive 100K Dataset \\
+  \textbf{MobileNetV3} & Mobile Network Version 3 \\
+  \textbf{GTSRB} & German Traffic Sign Recognition Benchmark \\
+  \textbf{UFLD} & Ultra-Fast Lane Detection \\
+  \textbf{MB} & Megabyte \\
+  \textbf{ONNX} & Open Neural Network Exchange \\
+  \textbf{TensorRT} & Tensor Runtime \\
+  \textbf{FP16} & 16-bit Floating Point Precision \\
+  \textbf{CUDA} & Compute Unified Device Architecture \\
+  \textbf{GPU} & Graphics Processing Unit \\
+  \textbf{NVIDIA} & NVIDIA Corporation \\
+  \textbf{ResNet-18} & Residual Network with 18 layers \\
+\end{longtable}
+\vspace{1\baselineskip}
 
 \renewcommand{\thepage}{\arabic{page}} % Start page numbering in arabic 
 \setcounter{page}{1} % start page numbering from 1
@@ -798,7 +813,6 @@ objects and measures the distance to each object. Two methods are used:
     as noise. This is ideal for LiDAR data, which often has variable point density and may include outliers.
     The algorithm's parameters (epsilon and minimum samples) are tuned to balance sensitivity to small obstacles
     and robustness against noise in the point cloud.
-
     \item \textbf{NumPy :} All point-cloud manipulation uses NumPy arrays for vectorized
     filtering of large $N \times 4$ buffers.
 
@@ -808,7 +822,7 @@ objects and measures the distance to each object. Two methods are used:
     \item \textbf{Pinhole projection for fusion :} A simple pinhole camera model
     with a pitch-corrected extrinsic transform was chosen over a full calibrated
     projection matrix because both sensors are rigidly mounted at known
-    transforms in simulation, so the extrinsics are exactly known.
+    transforms in simulation, so the extrinsics are exactly known.   
 \end{itemize}
 
 \begin{table}[H]
@@ -1028,6 +1042,14 @@ When a red traffic signal is detected, the ACC system computes the required dece
 \paragraph{Speed Limits and Curvature}
 
 The ACC system respects speed limits detected from traffic sign recognition and reduces speed for sharp curves based on estimated curve radius and assumed lateral acceleration limits \cite{ref40}.
+
+\section{Multi-Stage Perception Model Training and Jetson Optimization}
+
+In order to address the perception requirements of the driving system, three deep learning models were trained and used as a merged multi-stage pipeline. The first model is a YOLOv11-Nano object detector trained on the BDD100K dataset to detect obstacles including cyclists, cars, trucks, buses, motorcycles, traffic signs and traffic lights. The second model is a lightweight MobileNetV3-Small classifier trained on the GTSRB (German Traffic Sign Recognition Benchmark) dataset (43 classes) to accurately classify detected sign crops. The third model is an Ultra-Fast Lane Detection (UFLD) network with a ResNet-18 backbone trained on the TuSimple benchmark for real-time lane boundary detection. The UFLD weights were reduced from approximately 240 MB to about 100 MB by removing auxiliary head parameters and CARLA simulation–specific layers not needed for real-world scenarios; this was performed using state-dictionary filtering to retain only the fundamental lane parsing network weights.
+
+These models were merged into a single MultiStagePerception ROS-compatible node. The YOLO detector first localises objects and traffic-sign regions in the input frame, the MobileNetV3 classifier performs recognition on cropped sign regions using batched GPU inference, and UFLD simultaneously processes a resized input to predict lane boundaries.
+
+To optimise this pipeline for real-time deployment on the NVIDIA Jetson Orin Nano, several techniques were employed. PyTorch models were exported to ONNX and compiled into TensorRT engines with FP16 half-precision quantisation using the `trtexec` tool, reducing memory footprint and inference latency. CUDA stream parallelism was implemented to run the YOLO detector and the lane detection network on separate GPU streams. Persistent GPU tensor buffers were used to eliminate unnecessary memory allocations between frames. All image preprocessing, including colour-space conversion, resizing and normalisation, was performed on the GPU to avoid costly CPU–GPU transfers. These optimisations allowed the merged perception node to achieve real-time frame rates suitable for embedded autonomous driving on the Jetson Orin Nano platform.
 
 \chapter{ Testing and Performance Evaluation}
 
